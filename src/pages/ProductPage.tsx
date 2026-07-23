@@ -79,39 +79,65 @@ export function ProductPage() {
     window.scrollTo(0, 0);
   }, [slug]);
 
-  useEffect(() => {
+   useEffect(() => {
     async function fetchProduct() {
       if (!slug) return;
       setLoading(true);
       try {
+        // 1. جلب بيانات المنتج فقط (بدون Join) واستخدام maybeSingle() لمنع خطأ 406
         const { data: productData, error } = await supabase
           .from('products')
-          .select('*, categories()')
+          .select('*')
           .eq('slug', slug)
           .eq('is_active', true)
-          .single();
+          .maybeSingle(); // maybeSingle أكثر أماناً من single
 
-        if (error || !productData) return;
-        setProduct(productData);
+        if (error || !productData) {
+          console.error('Product not found or error:', error);
+          setProduct(null);
+          setLoading(false);
+          return;
+        }
 
+        // 2. جلب بيانات الفئة (Category) بشكل منفصل
+        let categoryData = null;
+        if (productData.category_id) {
+          const { data: catData } = await supabase
+            .from('categories')
+            .select('id, name, name_ar, slug')
+            .eq('id', productData.category_id)
+            .maybeSingle();
+          categoryData = catData;
+        }
+
+        // 3. دمج البيانات لتتوافق مع شكل الـ JSX (الذي يتوقع product.category)
+        const enrichedProduct = {
+          ...productData,
+          category: categoryData,
+        };
+        setProduct(enrichedProduct);
+
+        // 4. جلب المتغيرات (Variants)
         const { data: variantsData } = await supabase
           .from('product_variants')
           .select('*')
           .eq('product_id', productData.id);
         setVariants(variantsData || []);
 
+        // 5. جلب التقييمات (Reviews)
         const { data: reviewsData } = await supabase
           .from('reviews')
-          .select('*, profiles(*)')
+          .select('*, profiles(full_name, avatar_url)') // تأكد من اسم الجدول profiles أو users حسب قاعدة بياناتك
           .eq('product_id', productData.id)
           .eq('is_approved', true)
           .order('created_at', { ascending: false });
         setReviews(reviewsData || []);
 
+        // 6. جلب المنتجات المشابهة
         if (productData.category_id) {
           const { data: relatedData } = await supabase
             .from('products')
-            .select('*, categories(*)')
+            .select('*, categories(name, name_ar, slug)')
             .eq('category_id', productData.category_id)
             .eq('is_active', true)
             .neq('id', productData.id)
@@ -119,6 +145,7 @@ export function ProductPage() {
           setRelatedProducts(relatedData || []);
         }
 
+        // 7. إعداد الألوان والمقاسات الافتراضية
         if (variantsData && variantsData.length > 0) {
           const uniqueColors = variantsData.filter(
             (v, i, arr) => arr.findIndex((item) => item.color === v.color) === i
@@ -135,7 +162,6 @@ export function ProductPage() {
     }
     fetchProduct();
   }, [slug]);
-
   useEffect(() => {
     if (!selectedColor || !variants.length) return;
     const colorVariants = variants.filter((v) => v.color === selectedColor);
