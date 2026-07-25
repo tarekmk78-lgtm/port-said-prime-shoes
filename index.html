@@ -36,7 +36,7 @@
     <!-- Sitemap -->
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
-    <!-- ✅ Facebook Pixel Code -->
+    <!-- ✅ Facebook Pixel Code (Script ONLY in Head) -->
     <script>
       !function(f,b,e,v,n,t,s)
       {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -50,15 +50,18 @@
       fbq('init', '2079868279589990');
       fbq('track', 'PageView');
     </script>
-    <noscript>
-      <img height="1" width="1" style="display:none"
-      src="https://www.facebook.com/tr?id=2079868279589990&ev=PageView&noscript=1"/>
-    </noscript>
-    <!-- End Facebook Pixel Code -->
+    <!-- ⚠️ لا تضع أي وسم <noscript> هنا في الـ Head -->
 
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- ✅ Facebook Pixel Noscript (يوضع هنا فقط داخل الـ Body) -->
+    <noscript>
+      <img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=2079868279589990&ev=PageView&noscript=1"/>
+    </noscript>
+    
   </body>
-</html>
+</
