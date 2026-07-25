@@ -253,10 +253,10 @@ export function HomePage() {
                 </svg>
               </div>
               <h3 className="font-display text-xl font-semibold mb-2">
-                {language === 'ar' ? 'توصيل مجاني' : 'Free Shipping'}
+                {language === 'ar' ? 'توصيل لكل محافظات مصر' : 'Free Shipping'}
               </h3>
               <p className="text-gray-600">
-                {language === 'ar' ? 'توصيل مجاني للطلبات فوق 1000 جنيه' : 'Free shipping on orders over 1000 EGP'}
+                {language === 'ar' ? 'توصيل مجاني عند طلب اكثر من شوز' : 'Free shipping on orders over 1000 EGP'}
               </p>
             </div>
             <div className="p-6">

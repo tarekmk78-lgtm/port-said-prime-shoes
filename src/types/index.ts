@@ -13,28 +13,16 @@ export interface User {
   updated_at: string;
 }
 
-export interface Product {
+export interface ProductVariant {
   id: string;
-  sku: string;
-  name: string;
-  name_ar: string;
-  slug: string;
-  description: string;
-  description_ar: string;
-  price: number;
-  compare_at_price: number | null;
-  cost_price: number | null;
-  category_id: string;
-  brand: string | null;
-  images: string[];
-  tags: string[];
-  is_featured: boolean;
-  is_new: boolean;
-  is_bestseller: boolean;
-  is_active: boolean;
+  product_id: string;
+  size: string;
+  color: string;
+  color_code: string | null;
+  price: number | null;
   stock_quantity: number;
-  rating: number;
-  reviews_count: number;
+  sku: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +39,35 @@ export interface Category {
   is_active: boolean;
   sort_order: number;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  name_ar: string;
+  slug: string;
+  description: string;
+  description_ar: string;
+  price: number;
+  compare_at_price: number | null;
+  cost_price: number | null;
+  category_id: string;
+  category?: Category;  // ✅ أضفنا الخاصية دي
+  brand: string | null;
+  images: string[];
+  tags: string[];
+  is_featured: boolean;
+  is_new: boolean;
+  is_bestseller: boolean;
+  is_active: boolean;
+  stock_quantity: number;
+  rating: number;
+  reviews_count: number;
+  variants?: ProductVariant[];  // ✅ أضفنا الخاصية دي
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Order {
@@ -92,6 +109,12 @@ export interface Review {
   is_verified: boolean;
   is_approved: boolean;
   created_at: string;
+  user?: {  // ✅ أضفنا الخاصية دي
+    id?: string;
+    full_name?: string;
+    name?: string;
+    avatar_url?: string;
+  };
 }
 
 export interface CartItem {

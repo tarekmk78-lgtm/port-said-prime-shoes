@@ -531,7 +531,7 @@ export function ProductPage() {
             {/* Features */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { Icon: Truck, label: language === 'ar' ? 'توصيل مجاني' : 'Free Shipping' },
+                { Icon: Truck, label: language === 'ar' ? 'توصيل لكل محافظات مصر' : 'Free Shipping' },
                 { Icon: RotateCcw, label: language === 'ar' ? 'استرجاع 14 يوم' : '14 Day Returns' },
                 { Icon: Shield, label: language === 'ar' ? 'ضمان الجودة' : 'Quality Guarantee' },
               ].map(({ Icon, label }) => (

@@ -244,7 +244,7 @@ function App() {
               <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center bg-[#fef3d6] rounded-full group-hover:bg-[#d4a017] transition-colors duration-300">
                 <Truck className="w-10 h-10 text-[#d4a017] group-hover:text-white transition-colors" />
               </div>
-              <h3 className="font-serif text-2xl font-bold mb-3 text-[#1c1917]">شحن مجاني</h3>
+              <h3 className="font-serif text-2xl font-bold mb-3 text-[#1c1917]">شحن لجميع محافظات مصر </h3>
               <p className="text-[#57534e]">للطلبات فوق 500 جنيه</p>
             </div>
 
