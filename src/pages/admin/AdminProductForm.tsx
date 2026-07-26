@@ -10,7 +10,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Select } from '../../components/ui/Select';
 import { ImageUploader } from '../../components/admin/ImageUploader';
 import toast from 'react-hot-toast';
-import { ArrowLeft, ArrowRight, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, Trash2, Save, Sparkles } from 'lucide-react';
 
 const emptyForm = {
   sku: '',
@@ -28,7 +28,7 @@ const emptyForm = {
   tags: '',
   stock_quantity: '0',
   is_featured: false,
-  is_new: false,
+  is_new: false, // ✅ تأكدنا إنها موجودة وقيمتها الافتراضية false
   is_bestseller: false,
   is_active: true,
 };
@@ -86,7 +86,7 @@ export function AdminProductForm() {
           tags: (product.tags || []).join(', '),
           stock_quantity: String(product.stock_quantity),
           is_featured: product.is_featured,
-          is_new: product.is_new,
+          is_new: product.is_new, // ✅ ربط القيمة القادمة من الداتابيز
           is_bestseller: product.is_bestseller,
           is_active: product.is_active,
         });
@@ -147,7 +147,7 @@ export function AdminProductForm() {
         tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         stock_quantity: parseInt(form.stock_quantity) || 0,
         is_featured: form.is_featured,
-        is_new: form.is_new,
+        is_new: form.is_new, // ✅ التأكد من إرسال القيمة المحدثة
         is_bestseller: form.is_bestseller,
         is_active: form.is_active,
       };
@@ -163,8 +163,7 @@ export function AdminProductForm() {
         productId = data.id;
       }
 
-      // Sync variants: delete removed ones implicitly isn't tracked here, so we
-      // upsert what's in the form. For a v1 this keeps things simple and safe.
+      // Sync variants logic remains the same...
       for (const variant of variants) {
         const variantPayload = {
           product_id: productId,
@@ -184,13 +183,13 @@ export function AdminProductForm() {
 
       toast.success(
         isEditing
-          ? (language === 'ar' ? 'تم تحديث المنتج' : 'Product updated')
-          : (language === 'ar' ? 'تم إنشاء المنتج' : 'Product created')
+          ? (language === 'ar' ? 'تم تحديث المنتج بنجاح' : 'Product updated successfully')
+          : (language === 'ar' ? 'تم إنشاء المنتج بنجاح' : 'Product created successfully')
       );
       navigate('/admin/products');
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || (language === 'ar' ? 'حدث خطأ' : 'Something went wrong'));
+      toast.error(error.message || (language === 'ar' ? 'حدث خطأ أثناء الحفظ' : 'Something went wrong'));
     } finally {
       setSaving(false);
     }
@@ -199,15 +198,15 @@ export function AdminProductForm() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8956E]"></div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3">
-        <Link to="/admin/products" className="p-2 hover:bg-gray-100 rounded-md">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl pb-20">
+      <div className="flex items-center gap-3 mb-6">
+        <Link to="/admin/products" className="p-2 hover:bg-gray-100 rounded-md transition-colors">
           <Arrow className="h-5 w-5 text-gray-600" />
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">
@@ -218,8 +217,10 @@ export function AdminProductForm() {
       </div>
 
       {/* Basic info */}
-      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900">{language === 'ar' ? 'البيانات الأساسية' : 'Basic Information'}</h2>
+      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 border border-gray-100">
+        <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+          {language === 'ar' ? 'البيانات الأساسية' : 'Basic Information'}
+        </h2>
         <div className="grid md:grid-cols-2 gap-4">
           <Input label={language === 'ar' ? 'الاسم (إنجليزي)' : 'Name (English)'} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label={language === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'} required value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} />
@@ -248,7 +249,7 @@ export function AdminProductForm() {
       </div>
 
       {/* Pricing & stock */}
-      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 border border-gray-100">
         <h2 className="font-semibold text-gray-900">{language === 'ar' ? 'السعر والمخزون' : 'Pricing & Stock'}</h2>
         <div className="grid md:grid-cols-3 gap-4">
           <Input label={language === 'ar' ? 'السعر' : 'Price'} type="number" required value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
@@ -259,50 +260,64 @@ export function AdminProductForm() {
       </div>
 
       {/* Images */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">{language === 'ar' ? 'صور المنتج' : 'Product Images'}</h2>
         <ImageUploader bucket="product-images" multiple value={form.images} onChange={(urls) => setForm({ ...form, images: urls })} />
       </div>
 
-      {/* Flags */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      {/* Flags - تم تعديل هذا القسم ليكون أكثر احترافية */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">{language === 'ar' ? 'الحالة والعلامات' : 'Status & Flags'}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { key: 'is_active' as const, label: language === 'ar' ? 'مفعّل' : 'Active' },
-            { key: 'is_featured' as const, label: language === 'ar' ? 'مميز' : 'Featured' },
-            { key: 'is_new' as const, label: language === 'ar' ? 'وصل حديثاً' : 'New' },
-            { key: 'is_bestseller' as const, label: language === 'ar' ? 'الأكثر مبيعاً' : 'Bestseller' },
+            { key: 'is_active' as const, label: language === 'ar' ? 'مفعّل' : 'Active', icon: null },
+            { key: 'is_featured' as const, label: language === 'ar' ? 'مميز' : 'Featured', icon: null },
+            { key: 'is_new' as const, label: language === 'ar' ? 'وصل حديثاً' : 'New Arrival', icon: <Sparkles className="w-4 h-4 text-[#d48a9f]" /> },
+            { key: 'is_bestseller' as const, label: language === 'ar' ? 'الأكثر مبيعاً' : 'Bestseller', icon: null },
           ].map((flag) => (
-            <label key={flag.key} className="flex items-center gap-2.5 px-3 py-2.5 rounded-md border border-gray-200 cursor-pointer hover:border-gold">
+            <label 
+              key={flag.key} 
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer transition-all ${
+                form[flag.key] 
+                  ? 'border-[#d48a9f] bg-[#d48a9f]/5' 
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={form[flag.key]}
                 onChange={(e) => setForm({ ...form, [flag.key]: e.target.checked })}
-                className="h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold"
+                className="h-5 w-5 rounded border-gray-300 text-[#d48a9f] focus:ring-[#d48a9f] accent-[#d48a9f]"
               />
-              <span className="text-sm text-gray-700">{flag.label}</span>
+              <div className="flex items-center gap-2">
+                {flag.icon}
+                <span className={`text-sm font-medium ${form[flag.key] ? 'text-gray-900' : 'text-gray-600'}`}>
+                  {flag.label}
+                </span>
+              </div>
             </label>
           ))}
         </div>
       </div>
 
       {/* Variants */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-900">{language === 'ar' ? 'المقاسات والألوان' : 'Sizes & Colors'}</h2>
           <Button type="button" variant="outline" size="sm" onClick={addVariant}>
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 me-1" />
             {language === 'ar' ? 'إضافة مقاس/لون' : 'Add Variant'}
           </Button>
         </div>
 
         {variants.length === 0 ? (
-          <p className="text-sm text-gray-400">{language === 'ar' ? 'لا توجد مقاسات/ألوان مضافة بعد' : 'No variants added yet'}</p>
+          <p className="text-sm text-gray-400 text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+            {language === 'ar' ? 'لا توجد مقاسات/ألوان مضافة بعد' : 'No variants added yet'}
+          </p>
         ) : (
           <div className="space-y-3">
             {variants.map((variant, i) => (
-              <div key={i} className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end p-3 bg-gray-50 rounded-lg">
+              <div key={i} className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end p-4 bg-gray-50 rounded-lg border border-gray-100">
                 <Input
                   placeholder={language === 'ar' ? 'المقاس' : 'Size'}
                   value={variant.size}
@@ -330,7 +345,7 @@ export function AdminProductForm() {
                     value={variant.sku}
                     onChange={(e) => updateVariant(i, 'sku', e.target.value)}
                   />
-                  <button type="button" onClick={() => removeVariant(i)} className="p-2.5 text-red-600 hover:bg-red-50 rounded-md flex-shrink-0">
+                  <button type="button" onClick={() => removeVariant(i)} className="p-2.5 text-red-600 hover:bg-red-50 rounded-md flex-shrink-0 transition-colors">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -340,12 +355,12 @@ export function AdminProductForm() {
         )}
       </div>
 
-      <div className="flex justify-end gap-3 pb-6">
+      <div className="flex justify-end gap-3 sticky bottom-6 bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200 shadow-lg">
         <Button type="button" variant="outline" onClick={() => navigate('/admin/products')}>
           {language === 'ar' ? 'إلغاء' : 'Cancel'}
         </Button>
-        <Button type="submit" disabled={saving}>
-          <Save className="h-4 w-4" />
+        <Button type="submit" disabled={saving} className="min-w-[140px]">
+          <Save className="h-4 w-4 me-2" />
           {saving ? (language === 'ar' ? 'جارٍ الحفظ...' : 'Saving...') : (language === 'ar' ? 'حفظ المنتج' : 'Save Product')}
         </Button>
       </div>
