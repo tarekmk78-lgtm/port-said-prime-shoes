@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   MoreVertical,
+  Sparkles, // ✅ أيقونة جديدة للقسم
 } from 'lucide-react';
 
 export function AdminProducts() {
@@ -66,6 +67,27 @@ export function AdminProducts() {
 
       toast.success(
         language === 'ar' ? 'تم التحديث بنجاح' : 'Status updated successfully'
+      );
+      fetchProducts();
+    } catch (error) {
+      toast.error(language === 'ar' ? 'حدث خطأ' : 'An error occurred');
+    }
+  };
+
+  // ✅ دالة جديدة لتبديل حالة "وصل حديثاً"
+  const toggleNewArrival = async (product: Product) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_new: !product.is_new })
+        .eq('id', product.id);
+
+      if (error) throw error;
+
+      toast.success(
+        language === 'ar' 
+          ? (product.is_new ? 'تم الإزالة من وصل حديثاً' : 'تمت الإضافة إلى وصل حديثاً')
+          : (product.is_new ? 'Removed from New Arrivals' : 'Added to New Arrivals')
       );
       fetchProducts();
     } catch (error) {
@@ -167,6 +189,10 @@ export function AdminProducts() {
                 <th className="px-6 py-4 text-left rtl:text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {language === 'ar' ? 'المخزون' : 'Stock'}
                 </th>
+                {/* ✅ عمود جديد للتحكم في وصل حديثاً */}
+                <th className="px-6 py-4 text-left rtl:text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {language === 'ar' ? 'وصل حديثاً' : 'New Arrival'}
+                </th>
                 <th className="px-6 py-4 text-left rtl:text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {language === 'ar' ? 'الحالة' : 'Status'}
                 </th>
@@ -224,6 +250,24 @@ export function AdminProducts() {
                       {product.stock_quantity}
                     </span>
                   </td>
+                  
+                  {/* ✅ زر التبديل الجديد */}
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => toggleNewArrival(product)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        product.is_new
+                          ? 'bg-[#d48a9f]/20 text-[#d48a9f] border border-[#d48a9f]/30'
+                          : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${product.is_new ? 'fill-current' : ''}`} />
+                      {product.is_new
+                        ? language === 'ar' ? 'نشط' : 'Active'
+                        : language === 'ar' ? 'غير نشط' : 'Inactive'}
+                    </button>
+                  </td>
+
                   <td className="px-6 py-4">
                     <button
                       onClick={() => toggleProductStatus(product)}

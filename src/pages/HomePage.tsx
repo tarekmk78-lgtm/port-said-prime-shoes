@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/i18n';
 import { HeroSection } from '../components/home/HeroSection';
+// ✅ تم إضافة استيراد مكون السلايدر الجديد هنا
+import { NewArrivalsSlider } from '../components/home/NewArrivalsSlider'; 
 import { Category, Banner } from '../types';
 import { ArrowRight } from 'lucide-react';
 
@@ -55,6 +57,9 @@ export function HomePage() {
     <div className="min-h-screen">
       {/* Hero Section */}
       <HeroSection />
+
+      {/* ✅ تم إضافة قسم وصل حديثاً هنا مباشرة بعد الـ Hero */}
+      <NewArrivalsSlider />
 
       {/* Banners Section */}
       {banners.length > 0 && (
