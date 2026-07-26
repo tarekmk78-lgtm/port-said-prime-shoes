@@ -75,7 +75,7 @@ function App() {
               <div className="flex items-center gap-3">
                 <div className="w-16 h-[2px] bg-[#d4a017]"></div>
                 <p className="text-sm tracking-[0.2em] text-[#78716c] uppercase font-semibold">
-                  بورسعيد · صُنعت لتدوم
+                  هدفنا · هو ثقتكم
                 </p>
               </div>
               

@@ -58,7 +58,7 @@ export function HeroSection() {
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} 
               className="eyebrow text-[#D9BB96]"
             >
-              {language === 'ar' ? 'بورسعيد · صُنعت لتدوم' : 'Port Said · Crafted to last'}
+              {language === 'ar' ? 'هدفنا · هو ثقتكم' : 'Our Goal · Is Your Trust'}
             </motion.span>
             
             <motion.h1 
