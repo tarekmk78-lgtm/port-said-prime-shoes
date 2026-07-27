@@ -25,7 +25,7 @@ export function NewArrivalsSlider() {
         const { data, error } = await supabase
           .from('products')
           .select('id, name, name_ar, slug, price, images')
-          .eq('is_new_arrival', true) // جلب المنتجات المميزة فقط
+          .eq('is_new', true)  // جلب المنتجات المميزة فقط
           .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(8);
