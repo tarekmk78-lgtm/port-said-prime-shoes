@@ -1,7 +1,7 @@
 // src/components/home/NewArrivalsSlider.tsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion'; // ✅ إضافة المكتبة
+import { motion } from 'framer-motion'; 
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
 import { ArrowRight, Star, Sparkles } from 'lucide-react';
@@ -48,7 +48,7 @@ export function NewArrivalsSlider() {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1,
-      transition: { staggerChildren: 0.1 } // ظهور متتابع لكل كارت
+      transition: { staggerChildren: 0.1 } 
     }
   };
 
@@ -57,7 +57,8 @@ export function NewArrivalsSlider() {
     visible: { 
       opacity: 1, 
       y: 0,
-      transition: { duration: 0.5, ease: "easeOut" }
+      // ✅ تم إضافة "as const" هنا لحل خطأ الـ TypeScript
+      transition: { duration: 0.5, ease: "easeOut" as const } 
     }
   };
 
