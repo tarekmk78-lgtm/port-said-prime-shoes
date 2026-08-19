@@ -11,10 +11,7 @@ import {
   Search,
   Edit,
   Trash2,
-  Eye,
-  EyeOff,
-  MoreVertical,
-  Sparkles, // ✅ أيقونة جديدة للقسم
+  Sparkles,
 } from 'lucide-react';
 
 export function AdminProducts() {
@@ -24,6 +21,23 @@ export function AdminProducts() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+
+  // ✅ دالة مساعدة لبناء رابط الصورة الصحيح من Supabase Storage
+  const getImageUrl = (imagePath: string | undefined) => {
+    if (!imagePath) return 'https://placehold.co/48?text=No+Image';
+    
+    // لو الرابط كامل بالفعل (يبدأ بـ http) ارجعه كما هو
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    // ️ استبدل YOUR_PROJECT_ID بمعرف مشروعك الحقيقي من Supabase Dashboard > Settings > API
+    const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; 
+    const BUCKET_NAME = 'product-images'; 
+    
+    // تنظيف المسار من أي slashes زائدة
+    const cleanPath = imagePath.replace(/^\/+|\/+$/g, '');
+    
+    return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${cleanPath}`;
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -74,7 +88,6 @@ export function AdminProducts() {
     }
   };
 
-  // ✅ دالة جديدة لتبديل حالة "وصل حديثاً"
   const toggleNewArrival = async (product: Product) => {
     try {
       const { error } = await supabase
@@ -189,7 +202,6 @@ export function AdminProducts() {
                 <th className="px-6 py-4 text-left rtl:text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {language === 'ar' ? 'المخزون' : 'Stock'}
                 </th>
-                {/* ✅ عمود جديد للتحكم في وصل حديثاً */}
                 <th className="px-6 py-4 text-left rtl:text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {language === 'ar' ? 'وصل حديثاً' : 'New Arrival'}
                 </th>
@@ -206,10 +218,11 @@ export function AdminProducts() {
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <img loading="lazy" decoding="async"
-                        src={product.images?.[0] || 'https://placehold.co/48'}
+                      {/* ✅ تم استخدام الدالة الجديدة هنا */}
+                      <img 
+                        src={getImageUrl(product.images?.[0])}
                         alt={product.name}
-                        className="w-12 h-12 rounded-lg object-cover"
+                        className="w-12 h-12 rounded-lg object-cover bg-gray-100"
                       />
                       <div>
                         <p className="font-medium text-gray-900">
@@ -251,7 +264,6 @@ export function AdminProducts() {
                     </span>
                   </td>
                   
-                  {/* ✅ زر التبديل الجديد */}
                   <td className="px-6 py-4">
                     <button
                       onClick={() => toggleNewArrival(product)}
