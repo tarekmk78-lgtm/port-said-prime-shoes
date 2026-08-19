@@ -29,8 +29,8 @@ export function AdminProducts() {
     // لو الرابط كامل بالفعل (يبدأ بـ http) ارجعه كما هو
     if (imagePath.startsWith('http')) return imagePath;
     
-    // ️ استبدل YOUR_PROJECT_ID بمعرف مشروعك الحقيقي من Supabase Dashboard > Settings > API
-    const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; 
+    // ✅ تم وضع رابط مشروعك الصحيح هنا
+    const SUPABASE_URL = 'https://poemsrlqhbweazwzmvau.supabase.co'; 
     const BUCKET_NAME = 'product-images'; 
     
     // تنظيف المسار من أي slashes زائدة
@@ -218,7 +218,7 @@ export function AdminProducts() {
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      {/* ✅ تم استخدام الدالة الجديدة هنا */}
+                      {/* ✅ تم استخدام الدالة الجديدة هنا لعرض الصور بشكل صحيح */}
                       <img 
                         src={getImageUrl(product.images?.[0])}
                         alt={product.name}
