@@ -43,28 +43,13 @@ export function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       
-      {/* 1. شريط العروض العلوي (Promo Bar) */}
-      <div className="bg-black text-white py-2.5 text-center text-xs md:text-sm font-medium tracking-wide">
-        <div className="flex items-center justify-center gap-2 md:gap-6 flex-wrap px-4">
-          <span className="flex items-center gap-1">
-            <Truck className="w-4 h-4 text-amber-500" />
-            {language === 'ar' ? 'شحن مجاني للطلبات فوق 1000 جنيه' : 'Free shipping on orders over 1000 EGP'}
-          </span>
-          <span className="hidden md:inline text-amber-500">•</span>
-          <span className="flex items-center gap-1">
-            <ShieldCheck className="w-4 h-4 text-amber-500" />
-            {language === 'ar' ? 'ضمان استرجاع خلال 14 يوم' : '14-day easy return policy'}
-          </span>
-        </div>
-      </div>
-
-      {/* 2. Hero Section (المكون الموجود لديك) */}
+      {/* 1. Hero Section */}
       <HeroSection />
 
-      {/* 3. وصل حديثاً (المكون الموجود لديك) */}
+      {/* 2. وصل حديثاً */}
       <NewArrivalsSlider />
 
-      {/* 4. Banners Section (محسن بتصميم عالمي) */}
+      {/* 3. Banners Section */}
       {banners.length > 0 && (
         <section className="py-12 md:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -115,7 +100,7 @@ export function HomePage() {
         </section>
       )}
 
-      {/* 5. Categories Section (تصميم أنظف وأحدث) */}
+      {/* 4. Categories Section */}
       <section className="py-16 md:py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-12">
@@ -200,7 +185,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 6. Why Choose Us (محدث ليعكس هوية "مستورد ماركات عالمية") */}
+      {/* 5. Why Choose Us */}
       <section className="py-16 md:py-24 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">
