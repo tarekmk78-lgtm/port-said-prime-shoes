@@ -3,10 +3,9 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/i18n';
 import { HeroSection } from '../components/home/HeroSection';
-// ✅ تم إضافة استيراد مكون السلايدر الجديد هنا
 import { NewArrivalsSlider } from '../components/home/NewArrivalsSlider'; 
 import { Category, Banner } from '../types';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Truck, ShieldCheck, Award, Sparkles } from 'lucide-react';
 
 export function HomePage() {
   const { language } = useI18n();
@@ -17,51 +16,55 @@ export function HomePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // جلب الفئات
-        const { data: categoriesData, error: categoriesError } = await supabase
+        const { data: categoriesData } = await supabase
           .from('categories')
           .select('*')
           .eq('is_active', true)
           .order('sort_order', { ascending: true })
           .limit(6);
 
-        // جلب البنرات
-        const { data: bannersData, error: bannersError } = await supabase
+        const { data: bannersData } = await supabase
           .from('banners')
           .select('*')
           .eq('is_active', true)
           .order('sort_order', { ascending: true });
 
-        if (categoriesError) {
-          console.error('Error fetching categories:', categoriesError);
-        } else {
-          setCategories(categoriesData || []);
-        }
-
-        if (bannersError) {
-          console.error('Error fetching banners:', bannersError);
-        } else {
-          setBanners(bannersData || []);
-        }
+        setCategories(categoriesData || []);
+        setBanners(bannersData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     }
-
     fetchData();
   }, []);
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
+    <div className="min-h-screen bg-white">
+      
+      {/* 1. شريط العروض العلوي (Promo Bar) */}
+      <div className="bg-black text-white py-2.5 text-center text-xs md:text-sm font-medium tracking-wide">
+        <div className="flex items-center justify-center gap-2 md:gap-6 flex-wrap px-4">
+          <span className="flex items-center gap-1">
+            <Truck className="w-4 h-4 text-amber-500" />
+            {language === 'ar' ? 'شحن مجاني للطلبات فوق 1000 جنيه' : 'Free shipping on orders over 1000 EGP'}
+          </span>
+          <span className="hidden md:inline text-amber-500">•</span>
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="w-4 h-4 text-amber-500" />
+            {language === 'ar' ? 'ضمان استرجاع خلال 14 يوم' : '14-day easy return policy'}
+          </span>
+        </div>
+      </div>
+
+      {/* 2. Hero Section (المكون الموجود لديك) */}
       <HeroSection />
 
-      {/* ✅ تم إضافة قسم وصل حديثاً هنا مباشرة بعد الـ Hero */}
+      {/* 3. وصل حديثاً (المكون الموجود لديك) */}
       <NewArrivalsSlider />
 
-      {/* Banners Section */}
+      {/* 4. Banners Section (محسن بتصميم عالمي) */}
       {banners.length > 0 && (
         <section className="py-12 md:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -72,49 +75,39 @@ export function HomePage() {
                 const buttonText = language === 'ar' ? (banner.button_text_ar || 'اكتشف المزيد') : (banner.button_text || 'Discover More');
 
                 return (
-                  <div
+                  <Link
                     key={banner.id}
-                    className="relative overflow-hidden rounded-lg shadow-lg group"
+                    to={banner.link_url || '/shop'}
+                    className="relative overflow-hidden rounded-2xl shadow-sm group h-72 md:h-80"
                   >
-                    {/* Banner Image */}
-                    <div className="relative h-64 md:h-80 overflow-hidden">
-                      <img
-                        src={banner.image_url}
-                        alt={bannerTitle}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                      
-                      {/* Content */}
-                      <div className="absolute inset-0 flex flex-col justify-end p-6">
-                        <h3 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
-                          {bannerTitle}
-                        </h3>
-                        {bannerSubtitle && (
-                          <p className="text-white/80 text-sm mb-4">
-                            {bannerSubtitle}
-                          </p>
-                        )}
-                        {banner.link_url && (
-                          <Link
-                            to={banner.link_url}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-ink rounded-lg font-semibold hover:bg-gray-100 transition-colors w-fit"
-                          >
-                            {buttonText}
-                            <ArrowRight className="w-4 h-4" />
-                          </Link>
-                        )}
-                      </div>
-
-                      {/* Badge for discount */}
+                    <img
+                      src={banner.image_url}
+                      alt={bannerTitle}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                    
+                    <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
                       {banner.position === 'sale' && (
-                        <div className="absolute top-4 right-4 px-3 py-1 bg-red-600 text-white text-sm font-bold rounded-full">
+                        <span className="absolute top-4 right-4 px-3 py-1 bg-amber-500 text-black text-xs font-bold rounded-full uppercase tracking-wider">
                           {language === 'ar' ? 'عرض خاص' : 'Special Offer'}
-                        </div>
+                        </span>
                       )}
+                      <h3 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
+                        {bannerTitle}
+                      </h3>
+                      {bannerSubtitle && (
+                        <p className="text-white/80 text-sm mb-4 line-clamp-2">
+                          {bannerSubtitle}
+                        </p>
+                      )}
+                      <span className="inline-flex items-center gap-2 text-white font-semibold text-sm border-b border-white/50 pb-1 w-fit group-hover:border-amber-500 group-hover:text-amber-500 transition-colors">
+                        {buttonText}
+                        <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                      </span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -122,164 +115,148 @@ export function HomePage() {
         </section>
       )}
 
-      {/* Categories Section */}
+      {/* 5. Categories Section (تصميم أنظف وأحدث) */}
       <section className="py-16 md:py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
-          {/* Section Header */}
           <div className="text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-ink mb-4">
+            <div className="inline-flex items-center gap-2 text-amber-600 font-semibold text-sm mb-3">
+              <Sparkles className="w-4 h-4" />
+              {language === 'ar' ? 'تشكيلة مميزة' : 'Premium Collection'}
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               {language === 'ar' ? 'تسوق حسب الفئة' : 'Shop by Category'}
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               {language === 'ar' 
-                ? 'اكتشف مجموعتنا الواسعة من الأحذية الفاخرة' 
-                : 'Discover our wide range of premium footwear'}
+                ? 'اكتشف مجموعتنا الواسعة من الأحذية العالمية المستوردة' 
+                : 'Discover our wide range of imported premium footwear'}
             </p>
           </div>
 
-          {/* Categories Grid */}
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 rounded-lg h-80"></div>
-                </div>
+                <div key={i} className="animate-pulse bg-gray-200 rounded-2xl h-80"></div>
               ))}
             </div>
           ) : categories.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {categories.map((category) => {
                 const categoryName = language === 'ar' ? category.name_ar : category.name;
-                const categoryDescription = language === 'ar' 
-                  ? (category.description_ar || '') 
-                  : (category.description || '');
+                const categoryDescription = language === 'ar' ? (category.description_ar || '') : (category.description || '');
 
                 return (
                   <Link
                     key={category.id}
-                    to={`/shop?category=${category.slug}`}
-                    className="group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+                    to={`/shop?category=${category.slug || category.id}`}
+                    className="group relative overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 h-80 md:h-96"
                   >
-                    {/* Category Image */}
-                    <div className="relative h-80 md:h-96 overflow-hidden">
-                      {category.image_url ? (
-                        <img
-                          src={category.image_url}
-                          alt={categoryName}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
-                          <span className="text-gray-600 text-lg font-medium">
-                            {categoryName}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {/* Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                      
-                      {/* Content */}
-                      <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                        <h3 className="font-display text-2xl font-bold mb-2">
-                          {categoryName}
-                        </h3>
-                        {categoryDescription && (
-                          <p className="text-white/80 text-sm mb-3 line-clamp-2">
-                            {categoryDescription}
-                          </p>
-                        )}
-                        <span className="inline-flex items-center gap-2 text-sm font-medium border-b-2 border-white/60 group-hover:border-white transition-colors">
-                          {language === 'ar' ? 'تسوق الآن' : 'Shop Now'}
-                          <svg 
-                            className="w-4 h-4 transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </span>
+                    {category.image_url ? (
+                      <img
+                        src={category.image_url}
+                        alt={categoryName}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                        <span className="text-gray-500 text-lg font-medium">{categoryName}</span>
                       </div>
+                    )}
+                    
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
+                    
+                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                      <h3 className="text-2xl font-bold mb-2">{categoryName}</h3>
+                      {categoryDescription && (
+                        <p className="text-white/80 text-sm mb-4 line-clamp-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                          {categoryDescription}
+                        </p>
+                      )}
+                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-amber-400">
+                        {language === 'ar' ? 'تسوق الآن' : 'Shop Now'}
+                        <ArrowRight className="w-4 h-4 rtl:rotate-180 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
+                      </span>
                     </div>
                   </Link>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500">
-                {language === 'ar' ? 'لا توجد فئات متاحة حالياً' : 'No categories available'}
-              </p>
+            <div className="text-center py-12 text-gray-500">
+              {language === 'ar' ? 'لا توجد فئات متاحة حالياً' : 'No categories available'}
             </div>
           )}
 
-          {/* View All Link */}
           <div className="text-center mt-12">
             <Link
               to="/shop"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-ink text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--color-primary)' }}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-full font-semibold hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
             >
               {language === 'ar' ? 'عرض جميع المنتجات' : 'View All Products'}
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <ArrowRight className="w-5 h-5 rtl:rotate-180" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Featured Section (Optional) */}
-      <section className="py-16 md:py-24 bg-white">
+      {/* 6. Why Choose Us (محدث ليعكس هوية "مستورد ماركات عالمية") */}
+      <section className="py-16 md:py-24 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-ink mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">
             {language === 'ar' ? 'لماذا تختارنا؟' : 'Why Choose Us?'}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
-            <div className="p-6">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+            
+            {/* Feature 1 */}
+            <div className="p-6 rounded-2xl hover:bg-gray-50 transition-colors duration-300">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-black flex items-center justify-center">
+                <Award className="w-8 h-8 text-amber-500" />
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2">
-                {language === 'ar' ? 'جودة عالية' : 'Premium Quality'}
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                {language === 'ar' ? 'ماركات عالمية أصلية' : 'Authentic Global Brands'}
               </h3>
-              <p className="text-gray-600">
-                {language === 'ar' ? 'أحذية مصنوعة يدوياً من أجود الخامات' : 'Handcrafted shoes from the finest materials'}
+              <p className="text-gray-600 leading-relaxed">
+                {language === 'ar' 
+                  ? 'نستورد لك أفضل الماركات العالمية بضمان الأصالة والجودة العالية' 
+                  : 'We import the best global brands with guaranteed authenticity and high quality'}
               </p>
             </div>
-            <div className="p-6">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
-                </svg>
+
+            {/* Feature 2 */}
+            <div className="p-6 rounded-2xl hover:bg-gray-50 transition-colors duration-300">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-black flex items-center justify-center">
+                <Truck className="w-8 h-8 text-amber-500" />
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2">
-                {language === 'ar' ? 'توصيل لكل محافظات مصر' : 'Free Shipping'}
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                {language === 'ar' ? 'شحن سريع وآمن' : 'Fast & Secure Shipping'}
               </h3>
-              <p className="text-gray-600">
-                {language === 'ar' ? 'توصيل مجاني عند طلب اكثر من شوز' : 'Free shipping on orders over 1000 EGP'}
+              <p className="text-gray-600 leading-relaxed">
+                {language === 'ar' 
+                  ? 'توصيل سريع لجميع محافظات مصر مع شحن مجاني للطلبات المميزة' 
+                  : 'Fast delivery to all Egyptian governorates with free shipping on premium orders'}
               </p>
             </div>
-            <div className="p-6">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+
+            {/* Feature 3 */}
+            <div className="p-6 rounded-2xl hover:bg-gray-50 transition-colors duration-300">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-black flex items-center justify-center">
+                <ShieldCheck className="w-8 h-8 text-amber-500" />
               </div>
-              <h3 className="font-display text-xl font-semibold mb-2">
-                {language === 'ar' ? 'استرجاع سهل' : 'Easy Returns'}
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                {language === 'ar' ? 'ضمان استرجاع 14 يوم' : '14-Day Return Guarantee'}
               </h3>
-              <p className="text-gray-600">
-                {language === 'ar' ? 'استرجاع خلال 14 يوم' : '14-day return policy'}
+              <p className="text-gray-600 leading-relaxed">
+                {language === 'ar' 
+                  ? 'تسوق بثقة تامة مع سياسة استرجاع واستبدال مرنة خلال 14 يوماً' 
+                  : 'Shop with complete confidence with our flexible 14-day return and exchange policy'}
               </p>
             </div>
+
           </div>
         </div>
       </section>
+
     </div>
   );
 }
