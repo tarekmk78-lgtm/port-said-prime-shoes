@@ -5,7 +5,7 @@ import { useI18n } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth-context';
 import { useCart } from '../../lib/cart-context';
 import { useWhatsAppNumber } from '../../lib/settings-context';
-import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles, Truck } from 'lucide-react';
+import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles, Truck, ShieldCheck } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/', key: 'nav.home' },
@@ -93,12 +93,19 @@ export function Header() {
         </div>
       </div>
 
-      {/* 2. شريط الشحن المجاني (ذهبي) */}
-      <div className="bg-amber-500 text-black text-center py-2.5 text-sm font-bold flex items-center justify-center gap-2">
-        <Truck className="w-4 h-4" />
-        <span>
-          {language === 'ar' ? 'شحن مجاني عند شراء أكثر من حذاء' : 'Free shipping on orders of 2+ shoes'}
-        </span>
+      {/* 2. شريط العروض (ذهبي) */}
+      <div className="bg-amber-500 text-black text-center py-2.5 text-sm font-bold">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-4 md:gap-6 flex-wrap">
+          <span className="flex items-center gap-2">
+            <Truck className="w-4 h-4" />
+            {language === 'ar' ? 'شحن مجاني عند شراء أكثر من حذاء' : 'Free shipping on orders of 2+ shoes'}
+          </span>
+          <span className="hidden md:inline text-lg">•</span>
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            {language === 'ar' ? 'ضمان استرجاع خلال 14 يوم' : '14-day return guarantee'}
+          </span>
+        </div>
       </div>
 
       {/* 3. Main Header */}
