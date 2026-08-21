@@ -9,6 +9,7 @@ import { SettingsProvider } from './lib/settings-context';
 import { Toaster } from 'react-hot-toast';
 import { Layout } from './components/layout/Layout';
 import { AdminLayout } from './components/layout/AdminLayout';
+import { ScrollToTop } from './components/ScrollToTop';
 import { HomePage } from './pages/HomePage';
 
 const ShopPage = lazy(() => import('./pages/ShopPage').then((m) => ({ default: m.ShopPage })));
@@ -75,7 +76,6 @@ function AppRoutes() {
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="contact" element={<ContactPage />} />
-          {/* ✅ Route للواتساب Checkout */}
           <Route path="checkout/whatsapp" element={<WhatsAppCheckout />} />
         </Route>
         <Route path="login" element={<LoginPage />} />
@@ -110,6 +110,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ScrollToTop />
         <I18nProvider>
           <AuthProvider>
             <SettingsProvider>
