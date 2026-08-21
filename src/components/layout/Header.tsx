@@ -5,7 +5,7 @@ import { useI18n } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth-context';
 import { useCart } from '../../lib/cart-context';
 import { useWhatsAppNumber } from '../../lib/settings-context';
-import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles } from 'lucide-react';
+import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles, Truck } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/', key: 'nav.home' },
@@ -74,7 +74,7 @@ export function Header() {
 
   return (
     <>
-      {/* 1. Top Announcement Bar (محدث ليعكس هوية الاستيراد) */}
+      {/* 1. Top Announcement Bar (أسود) */}
       <div className={`hidden md:block bg-black text-white text-xs overflow-hidden transition-all duration-500 ${isScrolled ? 'h-0 opacity-0' : 'h-10 opacity-100'}`}>
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-10 flex items-center justify-between">
           <p className="tracking-wide font-medium flex items-center gap-2">
@@ -93,7 +93,15 @@ export function Header() {
         </div>
       </div>
 
-      {/* 2. Main Header */}
+      {/* 2. شريط الشحن المجاني (ذهبي) */}
+      <div className="bg-amber-500 text-black text-center py-2.5 text-sm font-bold flex items-center justify-center gap-2">
+        <Truck className="w-4 h-4" />
+        <span>
+          {language === 'ar' ? 'شحن مجاني عند شراء أكثر من حذاء' : 'Free shipping on orders of 2+ shoes'}
+        </span>
+      </div>
+
+      {/* 3. Main Header */}
       <header className={`sticky top-0 z-50 transition-all duration-300 border-b ${isScrolled ? 'bg-white/95 backdrop-blur-md border-gray-100 shadow-sm py-3' : 'bg-white border-transparent py-4'}`}>
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between gap-4">
@@ -186,7 +194,7 @@ export function Header() {
         </div>
       </header>
 
-      {/* 3. Mobile Menu */}
+      {/* 4. Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] lg:hidden">
@@ -254,7 +262,7 @@ export function Header() {
         )}
       </AnimatePresence>
 
-      {/* 4. Search Overlay */}
+      {/* 5. Search Overlay */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div 
