@@ -3,14 +3,66 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/i18n';
 import { HeroSection } from '../components/home/HeroSection';
-import { NewArrivalsSlider } from '../components/home/NewArrivalsSlider'; 
-import { Category, Banner } from '../types';
-import { ArrowRight, Truck, ShieldCheck, Award, Sparkles, CreditCard, Factory, Gem } from 'lucide-react';
+import { Category, Banner, Product } from '../types';
+import { ArrowRight, Truck, ShieldCheck, Award, Sparkles, CreditCard, Factory, Gem, Heart } from 'lucide-react';
+
+// لوجوهات الماركات (روابط SVG/PNG من مصادر موثوقة)
+const BRANDS = [
+  {
+    id: 'clarks',
+    name: 'Clarks',
+    name_ar: 'كلاركس',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Clarks_Originals_logo.svg/800px-Clarks_Originals_logo.svg.png',
+  },
+  {
+    id: 'ecco',
+    name: 'ECCO',
+    name_ar: 'إيكو',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/ECCO_logo.svg/800px-ECCO_logo.svg.png',
+  },
+  {
+    id: 'timberland',
+    name: 'Timberland',
+    name_ar: 'تيمبرلاند',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Timberland_logo.svg/800px-Timberland_logo.svg.png',
+  },
+  {
+    id: 'cat',
+    name: 'CAT',
+    name_ar: 'كاتربيلر',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Caterpillar_logo.svg/800px-Caterpillar_logo.svg.png',
+  },
+  {
+    id: 'skechers',
+    name: 'Skechers',
+    name_ar: 'سكيتشرز',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Skechers_logo.svg/800px-Skechers_logo.svg.png',
+  },
+  {
+    id: 'louboutin',
+    name: 'Christian Louboutin',
+    name_ar: 'لوروبيانا',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Christian_Louboutin_logo.svg/800px-Christian_Louboutin_logo.svg.png',
+  },
+  {
+    id: 'calvinklein',
+    name: 'Calvin Klein',
+    name_ar: 'كالفين كلاين',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Calvin_Klein_logo.svg/800px-Calvin_Klein_logo.svg.png',
+  },
+  {
+    id: 'hushpuppies',
+    name: 'Hush Puppies',
+    name_ar: 'هاتش بابس',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Hush_Puppies_logo.svg/800px-Hush_Puppies_logo.svg.png',
+  },
+];
 
 export function HomePage() {
   const { language } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,8 +81,16 @@ export function HomePage() {
           .eq('is_active', true)
           .order('sort_order', { ascending: true });
 
+        const { data: newArrivalsData } = await supabase
+          .from('products')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(6);
+
         setCategories(categoriesData || []);
         setBanners(bannersData || []);
+        setNewArrivals(newArrivalsData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -72,7 +132,7 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* 3. تسوق حسب الفئة (6 فئات في سطر واحد على الديسكتوب) */}
+      {/* 3. تسوق حسب الفئة */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-8 md:mb-12">
@@ -91,13 +151,13 @@ export function HomePage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="animate-pulse bg-gray-200 rounded-xl h-48 md:h-56"></div>
               ))}
             </div>
           ) : categories.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
               {categories.map((category) => {
                 const categoryName = language === 'ar' ? category.name_ar : category.name;
                 const categoryDescription = language === 'ar' ? (category.description_ar || '') : (category.description || '');
@@ -159,10 +219,178 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 4. وصل حديثاً */}
-      <NewArrivalsSlider />
+      {/* 4. وصل حديثاً (6 منتجات في سطر واحد) */}
+      <section className="py-12 md:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="text-center mb-8 md:mb-12">
+            <div className="inline-flex items-center gap-2 text-amber-600 font-semibold text-sm mb-3">
+              <Sparkles className="w-4 h-4" />
+              {language === 'ar' ? 'الأحدث' : 'Latest'}
+            </div>
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              {language === 'ar' ? 'وصل حديثاً' : 'New Arrivals'}
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">
+              {language === 'ar' 
+                ? 'اكتشف أحدث تشكيلاتنا من الأحذية الفاخرة' 
+                : 'Discover our latest collection of premium footwear'}
+            </p>
+          </div>
 
-      {/* 5. Banners Section */}
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="animate-pulse bg-gray-200 rounded-xl h-64 md:h-72"></div>
+              ))}
+            </div>
+          ) : newArrivals.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+              {newArrivals.map((product) => {
+                const productName = language === 'ar' ? product.name_ar : product.name;
+                const productPrice = product.price || 0;
+                const oldPrice = product.old_price || null;
+                const badge = product.is_new ? (language === 'ar' ? 'جديد' : 'New') : 
+                             product.discount_percent ? `-${product.discount_percent}%` : null;
+
+                return (
+                  <Link
+                    key={product.id}
+                    to={`/product/${product.slug || product.id}`}
+                    className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
+                  >
+                    <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+                      {product.images && product.images[0] ? (
+                        <img
+                          src={product.images[0]}
+                          alt={productName}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-400 text-xs">No Image</span>
+                        </div>
+                      )}
+                      
+                      {badge && (
+                        <span className={`absolute top-2 right-2 text-white text-[10px] px-2 py-1 rounded-full font-semibold ${
+                          badge.includes('%') ? 'bg-red-500' : 'bg-amber-500'
+                        }`}>
+                          {badge}
+                        </span>
+                      )}
+                      
+                      <button className="absolute top-2 left-2 p-1.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50">
+                        <Heart className="w-3.5 h-3.5 text-gray-600" />
+                      </button>
+                    </div>
+                    
+                    <div className="p-2.5 md:p-3">
+                      <h3 className="font-medium text-gray-900 text-xs md:text-sm mb-1.5 line-clamp-2 leading-tight min-h-[2rem]">
+                        {productName}
+                      </h3>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm md:text-base font-bold text-amber-600">
+                          {productPrice.toLocaleString()} {language === 'ar' ? 'ج.م' : 'EGP'}
+                        </span>
+                        {oldPrice && (
+                          <span className="text-[10px] md:text-xs text-gray-400 line-through">
+                            {oldPrice.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      {product.rating && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-xs text-amber-500">★</span>
+                          <span className="text-[10px] md:text-xs text-gray-600">
+                            {product.rating} ({product.review_count || 0})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              {language === 'ar' ? 'لا توجد منتجات جديدة حالياً' : 'No new products available'}
+            </div>
+          )}
+
+          <div className="text-center mt-8 md:mt-12">
+            <Link
+              to="/shop"
+              className="inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-black text-white rounded-full font-semibold hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl text-sm md:text-base"
+            >
+              {language === 'ar' ? 'عرض الكل' : 'View All'}
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 rtl:rotate-180" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. تسوق حسب الماركة */}
+      <section className="py-12 md:py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="text-center mb-8 md:mb-12">
+            <div className="inline-flex items-center gap-2 text-amber-600 font-semibold text-sm mb-3">
+              <Award className="w-4 h-4" />
+              {language === 'ar' ? 'ماركات عالمية' : 'Global Brands'}
+            </div>
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              {language === 'ar' ? 'تسوق حسب الماركة' : 'Shop by Brand'}
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">
+              {language === 'ar' 
+                ? 'أفضل الماركات العالمية في مكان واحد' 
+                : 'The best global brands in one place'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
+            {BRANDS.map((brand) => (
+              <Link
+                key={brand.id}
+                to={`/shop?brand=${brand.id}`}
+                className="group bg-white rounded-xl p-6 md:p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col items-center justify-center h-32 md:h-40"
+              >
+                <div className="w-full h-full flex items-center justify-center">
+                  <img
+                    src={brand.logo}
+                    alt={brand.name}
+                    className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110 filter grayscale group-hover:grayscale-0"
+                    loading="lazy"
+                    onError={(e) => {
+                      // Fallback إذا اللوجو مش متاح
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <span className="hidden text-lg md:text-xl font-bold text-gray-700 group-hover:text-amber-600 transition-colors">
+                    {brand.name}
+                  </span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-500 mt-2 font-medium">
+                  {language === 'ar' ? brand.name_ar : brand.name}
+                </p>
+              </Link>
+            ))}
+          </div>
+
+          <div className="text-center mt-8 md:mt-12">
+            <Link
+              to="/shop"
+              className="inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-black text-white rounded-full font-semibold hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl text-sm md:text-base"
+            >
+              {language === 'ar' ? 'عرض جميع الماركات' : 'View All Brands'}
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 rtl:rotate-180" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Banners Section */}
       {banners.length > 0 && (
         <section className="py-12 md:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -213,7 +441,7 @@ export function HomePage() {
         </section>
       )}
 
-      {/* 6. Why Choose Us */}
+      {/* 7. Why Choose Us */}
       <section className="py-16 md:py-24 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">
