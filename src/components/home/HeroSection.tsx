@@ -16,35 +16,76 @@ interface HeroSlide {
   button_text: string;
   button_text_ar: string;
   button_link: string;
-  text_position: 'left' | 'right' | 'center';
+  text_position: string;
   is_active: boolean;
   sort_order: number;
 }
 
+// بيانات افتراضية لو الجدول فاضي
+const DEFAULT_SLIDES: HeroSlide[] = [
+  {
+    id: '1',
+    title: 'TIMELESS ELEGANCE',
+    title_ar: 'الفخامة تبدأ من خطوة',
+    subtitle: 'Summer Collection 2026',
+    subtitle_ar: 'مجموعة صيف 2026',
+    description: 'اكتشف مجموعة صيف 2026\nمصنوعة من أجود أنواع الجلد الطبيعي',
+    description_ar: 'اكتشف مجموعة صيف 2026\nمصنوعة من أجود أنواع الجلد الطبيعي',
+    image_url: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=1920&q=80',
+    button_text: 'Shop Now',
+    button_text_ar: 'تسوق الآن',
+    button_link: '/shop',
+    text_position: 'right',
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: '2',
+    title: 'PREMIUM QUALITY',
+    title_ar: 'جودة عالمية',
+    subtitle: 'Handcrafted Excellence',
+    subtitle_ar: 'صناعة يدوية متقنة',
+    description: 'أحذية مصنوعة بأيدي حرفيين\nبخامات طبيعية 100%',
+    description_ar: 'أحذية مصنوعة بأيدي حرفيين\nبخامات طبيعية 100%',
+    image_url: 'https://images.unsplash.com/photo-1449505278894-297fdb3edbc1?w=1920&q=80',
+    button_text: 'Explore',
+    button_text_ar: 'استكشف',
+    button_link: '/shop',
+    text_position: 'left',
+    is_active: true,
+    sort_order: 2,
+  },
+];
+
 export function HeroSection() {
   const { language, isRTL } = useI18n();
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchSlides() {
-      const { data, error } = await supabase
-        .from('hero_slides')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-      
-      if (!error && data) {
-        setSlides(data);
+      try {
+        const { data, error } = await supabase
+          .from('hero_slides')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (!error && data && data.length > 0) {
+          setSlides(data);
+        }
+      } catch (err) {
+        console.error('Error fetching hero slides:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchSlides();
   }, []);
 
   useEffect(() => {
-    if (slides.length === 0) return;
+    if (slides.length <= 1) return;
     
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -61,13 +102,7 @@ export function HeroSection() {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  if (loading || slides.length === 0) {
-    return (
-      <div className="relative h-[600px] md:h-[700px] bg-gray-900 animate-pulse" />
-    );
-  }
-
-  const current = slides[currentSlide];
+  const current = slides[currentSlide] || DEFAULT_SLIDES[0];
   const title = language === 'ar' ? current.title_ar : current.title;
   const subtitle = language === 'ar' ? current.subtitle_ar : current.subtitle;
   const description = language === 'ar' ? current.description_ar : current.description;
@@ -75,7 +110,7 @@ export function HeroSection() {
 
   // تحديد موضع النص بناءً على اللغة
   const getTextPosition = () => {
-    if (current.text_position !== 'center') {
+    if (current.text_position && current.text_position !== 'center') {
       return current.text_position;
     }
     return isRTL ? 'right' : 'left';
@@ -101,6 +136,7 @@ export function HeroSection() {
       <div className="relative h-[600px] md:h-[700px] lg:h-[800px] overflow-hidden bg-black">
         {slides.map((slide, index) => {
           const isActive = index === currentSlide;
+          const slideTitle = language === 'ar' ? slide.title_ar : slide.title;
           return (
             <div
               key={slide.id}
@@ -112,7 +148,7 @@ export function HeroSection() {
               <div className="absolute inset-0">
                 <img
                   src={slide.image_url}
-                  alt={language === 'ar' ? slide.title_ar : slide.title}
+                  alt={slideTitle}
                   className="w-full h-full object-cover"
                 />
                 {/* Overlay داكن */}
@@ -140,7 +176,7 @@ export function HeroSection() {
                     }`}
                   >
                     {/* Subtitle */}
-                    <p className="text-amber-500 text-sm md:text-base font-medium mb-3 tracking-wide">
+                    <p className="text-amber-500 text-sm md:text-base font-medium mb-3 tracking-wide italic">
                       {language === 'ar' ? slide.subtitle_ar : slide.subtitle}
                     </p>
 
@@ -150,7 +186,7 @@ export function HeroSection() {
                     </h1>
 
                     {/* Description */}
-                    <p className="text-gray-200 text-base md:text-lg mb-8 leading-relaxed">
+                    <p className="text-gray-200 text-base md:text-lg mb-8 leading-relaxed whitespace-pre-line">
                       {language === 'ar' ? slide.description_ar : slide.description}
                     </p>
 
@@ -199,10 +235,10 @@ export function HeroSection() {
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all ${
+                  className={`h-2.5 rounded-full transition-all ${
                     index === currentSlide
                       ? 'bg-amber-500 w-8'
-                      : 'bg-white/40 hover:bg-white/60'
+                      : 'bg-white/40 hover:bg-white/60 w-2.5'
                   }`}
                 />
               ))}
