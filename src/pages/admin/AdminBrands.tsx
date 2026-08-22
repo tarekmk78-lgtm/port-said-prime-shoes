@@ -1,259 +1,182 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useI18n } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { ImageUploader } from '../../components/admin/ImageUploader';
-import toast from 'react-hot-toast';
-import { Plus, Trash2, Save, Edit2, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 
-interface Brand {
+interface HeroSlide {
   id: string;
-  name: string;
-  name_ar: string;
-  logo_url: string;
-  slug: string;
+  title_ar: string;
+  title_en: string;
+  subtitle_ar: string;
+  subtitle_en: string;
+  description?: string;
+  description_ar?: string;
+  image_url: string;
+  btn_ar?: string;
+  btn_en?: string;
+  link?: string;
   is_active: boolean;
   sort_order: number;
 }
 
-export function AdminBrands() {
+export function HeroSection() {
   const { language } = useI18n();
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  
-  const [form, setForm] = useState({
-    name: '',
-    name_ar: '',
-    logo_url: '',
-    slug: '',
-    sort_order: 0,
-    is_active: true,
-  });
 
-  useEffect(() => { fetchBrands(); }, []);
-
-  async function fetchBrands() {
-    const { data, error } = await supabase
-      .from('brands')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    
-    if (!error) setBrands(data || []);
-    setLoading(false);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name || !form.name_ar || !form.slug) {
-      toast.error(language === 'ar' ? 'يرجى ملء الحقول المطلوبة' : 'Please fill required fields');
-      return;
-    }
-
-    setSaving(true);
-    
-    if (editingId) {
-      // تحديث ماركة موجودة
-      const { error } = await supabase
-        .from('brands')
-        .update(form)
-        .eq('id', editingId);
-      
-      if (error) {
-        toast.error(language === 'ar' ? 'فشل التحديث' : 'Update failed');
-      } else {
-        toast.success(language === 'ar' ? 'تم تحديث الماركة بنجاح' : 'Brand updated successfully');
-        setEditingId(null);
-      }
-    } else {
-      // إضافة ماركة جديدة
-      const { error } = await supabase
-        .from('brands')
-        .insert([form]);
-      
-      if (error) {
-        toast.error(language === 'ar' ? 'فشل الإضافة' : 'Add failed');
-      } else {
-        toast.success(language === 'ar' ? 'تمت إضافة الماركة بنجاح' : 'Brand added successfully');
+  useEffect(() => {
+    async function fetchSlides() {
+      try {
+        const { data, error } = await supabase
+          .from('hero_slides')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (!error && data && data.length > 0) {
+          setSlides(data);
+        } else {
+          setSlides([
+            {
+              id: '1',
+              title_ar: 'الفخامة تبدأ من خطوة',
+              title_en: 'TIMELESS ELEGANCE',
+              subtitle_ar: 'مجموعة صيف 2026',
+              subtitle_en: 'Summer Collection 2026',
+              description_ar: 'اكتشف التشكيلة الجديدة',
+              description: 'Discover our new collection',
+              image_url: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=1920&q=80',
+              btn_ar: 'تسوق الآن',
+              btn_en: 'Shop Now',
+              link: '/shop',
+              is_active: true,
+              sort_order: 0,
+            },
+          ]);
+        }
+      } catch (err) {
+        console.error('Error:', err);
+      } finally {
+        setLoading(false);
       }
     }
-    
-    setForm({ name: '', name_ar: '', logo_url: '', slug: '', sort_order: 0, is_active: true });
-    fetchBrands();
-    setSaving(false);
+    fetchSlides();
+  }, []);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [slides.length]);
+
+  if (loading || slides.length === 0) {
+    return <div className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-gray-950" />;
   }
 
-  async function handleEdit(brand: Brand) {
-    setEditingId(brand.id);
-    setForm({
-      name: brand.name,
-      name_ar: brand.name_ar,
-      logo_url: brand.logo_url || '',
-      slug: brand.slug,
-      sort_order: brand.sort_order,
-      is_active: brand.is_active,
-    });
-  }
-
-  async function handleDelete(id: string) {
-    if (window.confirm(language === 'ar' ? 'هل أنت متأكد من الحذف؟' : 'Are you sure?')) {
-      await supabase.from('brands').delete().eq('id', id);
-      toast.success(language === 'ar' ? 'تم الحذف' : 'Deleted');
-      fetchBrands();
-    }
-  }
-
-  const generateSlug = (name: string) => {
-    return name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  };
-
-  if (loading) return <div className="p-8 text-center">جاري التحميل...</div>;
+  const current = slides[currentSlide];
+  const title = language === 'ar' ? current.title_ar : current.title_en;
+  const subtitle = language === 'ar' ? current.subtitle_ar : current.subtitle_en;
+  const description = language === 'ar' ? (current.description_ar || '') : (current.description || '');
+  const buttonText = language === 'ar' ? (current.btn_ar || 'تسوق الآن') : (current.btn_en || 'Shop Now');
+  const buttonLink = current.link || '/shop';
+  const isAr = language === 'ar';
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{language === 'ar' ? 'إدارة الماركات' : 'Manage Brands'}</h1>
-          <p className="text-gray-500 mt-1">{language === 'ar' ? 'أضف أو عدل الماركات المعروضة في الموقع' : 'Add or edit brands displayed on the website'}</p>
+    <section className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-black overflow-hidden select-none">
+      <div className="absolute inset-0 w-full h-full">
+        {slides.map((slide, index) => (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              index === currentSlide ? 'opacity-100 z-0' : 'opacity-0 z-0'
+            }`}
+          >
+            <img
+              src={slide.image_url}
+              alt={`Hero Slide ${index + 1}`}
+              className="w-full h-full object-cover object-center pointer-events-none"
+            />
+            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/50 md:bg-gradient-to-b md:from-black/20 ${
+              isAr 
+                ? 'md:bg-gradient-to-l md:from-black/85 md:via-black/40 md:to-transparent' 
+                : 'md:bg-gradient-to-r md:from-black/85 md:via-black/40 md:to-transparent'
+            }`} />
+          </div>
+        ))}
+      </div>
+
+      <div className="absolute top-0 left-0 right-0 z-10 bg-black/30 backdrop-blur-[2px] py-2 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="flex items-center justify-center gap-4 text-white/90 text-[10px] md:text-xs tracking-wider">
+            <span>شحن مجاني لجميع الطلبات | ضمان استرجاع 14 يوم</span>
+          </div>
         </div>
       </div>
 
-      {/* نموذج الإضافة/التعديل */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          {editingId ? <Edit2 className="h-5 w-5 text-[#B8956E]" /> : <Plus className="h-5 w-5 text-[#B8956E]" />}
-          {editingId ? (language === 'ar' ? 'تعديل ماركة' : 'Edit Brand') : (language === 'ar' ? 'إضافة ماركة جديدة' : 'Add New Brand')}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <Input 
-              label={language === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'} 
-              value={form.name_ar} 
-              onChange={(e) => setForm({...form, name_ar: e.target.value})} 
-              required 
-            />
-            <Input 
-              label={language === 'ar' ? 'الاسم (English)' : 'Name (English)'} 
-              value={form.name} 
-              onChange={(e) => {
-                const value = e.target.value;
-                setForm({
-                  ...form, 
-                  name: value,
-                  slug: form.slug || generateSlug(value)
-                });
-              }} 
-              required 
-            />
+      <div className="relative h-full max-w-7xl mx-auto px-4 md:px-12 flex items-center pt-8 z-10">
+        <div className={`w-full md:w-1/2 ${isAr ? 'text-right' : 'text-left'}`}>
+          <p className="text-amber-500 text-[11px] md:text-sm font-bold uppercase mb-1 md:mb-2 tracking-widest">
+            {subtitle}
+          </p>
+
+          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-2 md:mb-3 leading-tight drop-shadow-md">
+            {title}
+          </h1>
+
+          <p className="hidden sm:block text-gray-300 text-xs md:text-base mb-5 md:mb-6 leading-relaxed max-w-md opacity-95">
+            {description}
+          </p>
+
+          <div className="flex flex-wrap gap-2 md:gap-3">
+            <Link
+              to={buttonLink}
+              className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-amber-600 text-white text-xs md:text-sm rounded-md font-bold hover:bg-amber-700 transition-all shadow-lg active:scale-95"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              {buttonText}
+            </Link>
+            <Link
+              to="/shop"
+              className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-white/10 backdrop-blur-md text-white text-xs md:text-sm border border-white/20 rounded-md font-bold hover:bg-white/20 transition-all active:scale-95"
+            >
+              {isAr ? 'استكشف المجموعة' : 'Explore Collection'}
+            </Link>
           </div>
-          
-          <Input 
-            label={language === 'ar' ? 'الرابط (Slug)' : 'Slug'} 
-            value={form.slug} 
-            onChange={(e) => setForm({...form, slug: e.target.value})} 
-            required 
-            placeholder="e.g., clarks, ecco, skechers"
-          />
-          
-          <ImageUploader 
-            bucket="brands" 
-            multiple={false} 
-            label={language === 'ar' ? 'شعار الماركة' : 'Brand Logo'} 
-            value={form.logo_url ? [form.logo_url] : []} 
-            onChange={(urls) => setForm({...form, logo_url: urls[0] || ''})} 
-          />
-          
-          <div className="grid md:grid-cols-2 gap-4">
-            <Input 
-              label={language === 'ar' ? 'ترتيب العرض' : 'Sort Order'} 
-              type="number"
-              value={form.sort_order} 
-              onChange={(e) => setForm({...form, sort_order: Number(e.target.value)})} 
-            />
-            <label className="flex items-center gap-2 mt-8">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => setForm({...form, is_active: e.target.checked})}
-                className="w-4 h-4 rounded border-gray-300 text-[#B8956E] focus:ring-[#B8956E]"
+        </div>
+      </div>
+
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all transform active:scale-90"
+          >
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all transform active:scale-90"
+          >
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  index === currentSlide ? 'bg-amber-500 w-6' : 'bg-white/30 hover:bg-white/50 w-1.5'
+                }`}
               />
-              <span className="text-sm text-gray-700">{language === 'ar' ? 'ماركة نشطة' : 'Active Brand'}</span>
-            </label>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button type="submit" disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? (language === 'ar' ? 'جارٍ الحفظ...' : 'Saving...') : (editingId ? (language === 'ar' ? 'تحديث الماركة' : 'Update Brand') : (language === 'ar' ? 'إضافة الماركة' : 'Add Brand'))}
-            </Button>
-            {editingId && (
-              <Button 
-                type="button" 
-                onClick={() => {
-                  setEditingId(null);
-                  setForm({ name: '', name_ar: '', logo_url: '', slug: '', sort_order: 0, is_active: true });
-                }}
-                variant="outline"
-              >
-                {language === 'ar' ? 'إلغاء' : 'Cancel'}
-              </Button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* قائمة الماركات الحالية */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 font-semibold text-gray-700">
-          {language === 'ar' ? 'الماركات الحالية' : 'Current Brands'}
-        </div>
-        {brands.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 flex flex-col items-center gap-2">
-            <ImageIcon className="h-8 w-8 text-gray-300" />
-            {language === 'ar' ? 'لا توجد ماركات مضافة بعد' : 'No brands added yet'}
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {brands.map((brand) => (
-              <div key={brand.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-                {brand.logo_url ? (
-                  <img src={brand.logo_url} alt={brand.name} className="w-16 h-16 object-contain rounded-lg border border-gray-200 p-2" />
-                ) : (
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-xs text-gray-400">{brand.name.substring(0, 2).toUpperCase()}</span>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{brand.name}</p>
-                  <p className="text-sm text-gray-500">{brand.name_ar}</p>
-                  <p className="text-xs text-gray-400 mt-1">Slug: {brand.slug}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-full text-xs ${brand.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                    {brand.is_active ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'غير نشط' : 'Inactive')}
-                  </span>
-                  <button 
-                    onClick={() => handleEdit(brand)} 
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(brand.id)} 
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
             ))}
           </div>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </section>
   );
 }
