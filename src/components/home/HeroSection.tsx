@@ -94,12 +94,13 @@ export function HeroSection() {
     return <div className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-gray-950" />;
   }
 
-  const current = slides[currentSlide];
-  const title = language === 'ar' ? current.title_ar : current.title;
-  const subtitle = language === 'ar' ? current.subtitle_ar : current.subtitle;
-  const description = language === 'ar' ? current.description_ar : current.description;
-  const buttonText = language === 'ar' ? current.button_text_ar : current.button_text;
-  const isAr = language === 'ar';
+const current = slides[currentSlide];
+const title = language === 'ar' ? current.title_ar : (current as any).title_en;
+const subtitle = language === 'ar' ? current.subtitle_ar : (current as any).subtitle_en;
+const description = language === 'ar' ? current.description_ar : current.description;
+const buttonText = language === 'ar' ? current.btn_ar : (current as any).btn_en;
+const buttonLink = current.link || '/shop';
+const isAr = language === 'ar';
 
   return (
     // أبعاد الهيرو المستوحاة من DR.M (ارتفاع مثالي وشريطي على اللاب توب 450px كحد أقصى)
