@@ -160,7 +160,7 @@ const isAr = language === 'ar';
           {/* أزرار الإجراء السريع (Call To Action) */}
           <div className="flex flex-wrap gap-2 md:gap-3">
             <Link
-              to={current.button_link || '/shop'}
+                to={buttonLink}
               className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-amber-600 text-white text-xs md:text-sm rounded-md font-bold hover:bg-amber-700 transition-all shadow-lg active:scale-95"
             >
               <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
