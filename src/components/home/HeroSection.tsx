@@ -16,50 +16,13 @@ interface HeroSlide {
   button_text: string;
   button_text_ar: string;
   button_link: string;
-  text_position: string;
   is_active: boolean;
   sort_order: number;
 }
 
-// بيانات افتراضية لو الجدول فاضي
-const DEFAULT_SLIDES: HeroSlide[] = [
-  {
-    id: '1',
-    title: 'TIMELESS ELEGANCE',
-    title_ar: 'الفخامة تبدأ من خطوة',
-    subtitle: 'Summer Collection 2026',
-    subtitle_ar: 'مجموعة صيف 2026',
-    description: 'اكتشف مجموعة صيف 2026\nمصنوعة من أجود أنواع الجلد الطبيعي',
-    description_ar: 'اكتشف مجموعة صيف 2026\nمصنوعة من أجود أنواع الجلد الطبيعي',
-    image_url: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=1920&q=80',
-    button_text: 'Shop Now',
-    button_text_ar: 'تسوق الآن',
-    button_link: '/shop',
-    text_position: 'right',
-    is_active: true,
-    sort_order: 1,
-  },
-  {
-    id: '2',
-    title: 'PREMIUM QUALITY',
-    title_ar: 'جودة عالمية',
-    subtitle: 'Handcrafted Excellence',
-    subtitle_ar: 'صناعة يدوية متقنة',
-    description: 'أحذية مصنوعة بأيدي حرفيين\nبخامات طبيعية 100%',
-    description_ar: 'أحذية مصنوعة بأيدي حرفيين\nبخامات طبيعية 100%',
-    image_url: 'https://images.unsplash.com/photo-1449505278894-297fdb3edbc1?w=1920&q=80',
-    button_text: 'Explore',
-    button_text_ar: 'استكشف',
-    button_link: '/shop',
-    text_position: 'left',
-    is_active: true,
-    sort_order: 2,
-  },
-];
-
 export function HeroSection() {
-  const { language, isRTL } = useI18n();
-  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_SLIDES);
+  const { language } = useI18n();
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -94,32 +57,18 @@ export function HeroSection() {
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
+  if (loading || slides.length === 0) {
+    return <div className="relative h-[400px] md:h-[500px] lg:h-[600px] bg-gray-900 animate-pulse" />;
+  }
 
-  const current = slides[currentSlide] || DEFAULT_SLIDES[0];
-  const title = language === 'ar' ? current.title_ar : current.title;
-  const subtitle = language === 'ar' ? current.subtitle_ar : current.subtitle;
-  const description = language === 'ar' ? current.description_ar : current.description;
-  const buttonText = language === 'ar' ? current.button_text_ar : current.button_text;
-
-  // تحديد موضع النص بناءً على اللغة
-  const getTextPosition = () => {
-    if (current.text_position && current.text_position !== 'center') {
-      return current.text_position;
-    }
-    return isRTL ? 'right' : 'left';
-  };
-
-  const textPosition = getTextPosition();
+  const current = slides[currentSlide];
+  const isTextOnRight = language === 'ar';
 
   return (
-    <section className="relative">
+    <section className="relative w-full">
       {/* الشريط العلوي الشفاف */}
       <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/60 to-transparent py-3">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -132,11 +81,12 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* السلايدر */}
-      <div className="relative h-[600px] md:h-[700px] lg:h-[800px] overflow-hidden bg-black">
+      {/* السلايدر - أحجام احترافية */}
+      <div className="relative h-[400px] md:h-[500px] lg:h-[600px] xl:h-[650px] overflow-hidden bg-black">
         {slides.map((slide, index) => {
           const isActive = index === currentSlide;
           const slideTitle = language === 'ar' ? slide.title_ar : slide.title;
+          
           return (
             <div
               key={slide.id}
@@ -144,70 +94,58 @@ export function HeroSection() {
                 isActive ? 'opacity-100' : 'opacity-0'
               }`}
             >
-              {/* الصورة */}
-              <div className="absolute inset-0">
-                <img
-                  src={slide.image_url}
-                  alt={slideTitle}
-                  className="w-full h-full object-cover"
-                />
-                {/* Overlay داكن */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
-              </div>
-
-              {/* المحتوى */}
-              <div className="relative h-full max-w-7xl mx-auto px-4 md:px-6">
-                <div
-                  className={`flex items-center h-full ${
-                    textPosition === 'right'
-                      ? 'justify-end'
-                      : textPosition === 'left'
-                      ? 'justify-start'
-                      : 'justify-center'
-                  }`}
-                >
-                  <div
-                    className={`max-w-xl ${
-                      textPosition === 'right'
-                        ? 'text-right'
-                        : textPosition === 'left'
-                        ? 'text-left'
-                        : 'text-center'
-                    }`}
-                  >
-                    {/* Subtitle */}
-                    <p className="text-amber-500 text-sm md:text-base font-medium mb-3 tracking-wide italic">
+              <div className="relative h-full flex">
+                
+                {/* جزء النص */}
+                <div className={`w-full md:w-1/2 flex items-center ${
+                  isTextOnRight ? 'md:order-2' : 'md:order-1'
+                }`}>
+                  <div className={`px-6 md:px-12 lg:px-20 max-w-xl ${
+                    isTextOnRight ? 'text-right' : 'text-left'
+                  }`}>
+                    <p className="text-amber-500 text-xs md:text-sm font-medium mb-2 tracking-wide italic">
                       {language === 'ar' ? slide.subtitle_ar : slide.subtitle}
                     </p>
-
-                    {/* Title */}
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                    <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4 leading-tight">
                       {language === 'ar' ? slide.title_ar : slide.title}
                     </h1>
-
-                    {/* Description */}
-                    <p className="text-gray-200 text-base md:text-lg mb-8 leading-relaxed whitespace-pre-line">
+                    <p className="text-gray-200 text-xs md:text-base mb-4 md:mb-6 leading-relaxed whitespace-pre-line hidden md:block">
                       {language === 'ar' ? slide.description_ar : slide.description}
                     </p>
-
-                    {/* Buttons */}
-                    <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-wrap gap-2 md:gap-3">
                       <Link
                         to={slide.button_link || '/shop'}
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors shadow-lg"
+                        className="inline-flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors shadow-lg text-xs md:text-base"
                       >
-                        <ShoppingBag className="w-5 h-5" />
+                        <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" />
                         {language === 'ar' ? slide.button_text_ar : slide.button_text}
                       </Link>
                       <Link
                         to="/shop"
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white border border-white/30 rounded-lg font-semibold hover:bg-white/20 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-white/10 backdrop-blur-sm text-white border border-white/30 rounded-lg font-semibold hover:bg-white/20 transition-colors text-xs md:text-base"
                       >
                         {language === 'ar' ? 'استكشف المجموعة' : 'Explore Collection'}
                       </Link>
                     </div>
                   </div>
                 </div>
+
+                {/* جزء الصورة */}
+                <div className={`w-full md:w-1/2 ${
+                  isTextOnRight ? 'md:order-1' : 'md:order-2'
+                }`}>
+                  <div className="relative h-full">
+                    <img
+                      src={slide.image_url}
+                      alt={slideTitle}
+                      className="w-full h-full object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent md:bg-gradient-to-l" />
+                  </div>
+                </div>
+
+                {/* Overlay للنص على الموبايل */}
+                <div className="absolute inset-0 bg-black/60 md:hidden" />
               </div>
             </div>
           );
@@ -218,27 +156,26 @@ export function HeroSection() {
           <>
             <button
               onClick={prevSlide}
-              className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all"
+              className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all"
             >
-              {isRTL ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
+              <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
             </button>
             <button
               onClick={nextSlide}
-              className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all"
+              className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all"
             >
-              {isRTL ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
+              <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
             </button>
 
-            {/* النقاط */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+            <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-2">
               {slides.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}
-                  className={`h-2.5 rounded-full transition-all ${
+                  className={`h-2 rounded-full transition-all ${
                     index === currentSlide
-                      ? 'bg-amber-500 w-8'
-                      : 'bg-white/40 hover:bg-white/60 w-2.5'
+                      ? 'bg-amber-500 w-6 md:w-8'
+                      : 'bg-white/40 hover:bg-white/60 w-2'
                   }`}
                 />
               ))}
