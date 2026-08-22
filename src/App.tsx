@@ -34,12 +34,10 @@ const AdminReviews = lazy(() => import('./pages/admin/AdminReviews').then((m) =>
 const AdminCMS = lazy(() => import('./pages/admin/AdminCMS').then((m) => ({ default: m.AdminCMS })));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((m) => ({ default: m.AdminSettings })));
 const AdminHeroSlides = lazy(() => import('./pages/admin/AdminHeroSlides').then((m) => ({ default: m.AdminHeroSlides })));
-const AdminBrands = lazy(() => import('./pages/admin/AdminBrands').then((m) => ({ default: m.AdminBrands }))); // ✅ تمت الإضافة
-
-const queryClient = new QueryClient();
+const AdminBrands = lazy(() => import('./pages/admin/AdminBrands').then((m: any) => ({ default: m.default || m.AdminBrands })));const queryClient = new QueryClient();
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
-  const { user, session, loading, isAdmin } = useAuth();
+  const { session, loading, isAdmin } = useAuth();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -102,7 +100,7 @@ function AppRoutes() {
           <Route path="media" element={<AdminCMS />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="hero" element={<AdminHeroSlides />} />
-          <Route path="brands" element={<AdminBrands />} /> {/* ✅ تمت الإضافة */}
+          <Route path="brands" element={<AdminBrands />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

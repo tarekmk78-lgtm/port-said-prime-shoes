@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useI18n } from '../lib/i18n';
 import { useCart } from '../lib/cart-context';
-import { useWhatsAppNumber } from '../lib/settings-context';
 import { formatPrice, getWhatsAppCartUrl } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -18,7 +17,6 @@ export function CartPage() {
     discount,
     total,
     couponCode,
-    couponDiscount,
     loading,
     updateQuantity,
     removeItem,
@@ -26,7 +24,7 @@ export function CartPage() {
     removeCoupon,
   } = useCart();
   const [couponInput, setCouponInput] = useState('');
-  const whatsappNumber = useWhatsAppNumber();
+  const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || '';
 
   const handleOrderViaWhatsApp = () => {
     const url = getWhatsAppCartUrl(

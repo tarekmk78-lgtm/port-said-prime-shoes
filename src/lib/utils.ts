@@ -4,7 +4,7 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
-export function formatPrice(price: number, currency = 'EGP', symbol = 'E£'): string {
+export function formatPrice(price: number, symbol = 'E£'): string {
   return `${symbol}${price.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -160,7 +160,6 @@ export function getProductStatus(
   stock: number,
   isNew: boolean,
   isBestseller: boolean,
-  isFeatured: boolean,
   price: number,
   compareAtPrice: number | null
 ): string[] {

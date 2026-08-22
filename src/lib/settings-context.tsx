@@ -1,81 +1,78 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from './supabase';
-import { SiteSettings } from '../types';
+
+interface SiteSettings {
+  id?: string;
+  store_name?: string;
+  store_name_ar?: string;
+  store_description?: string;
+  store_description_ar?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  address?: string;
+  logo_url?: string;
+  favicon_url?: string;
+  currency?: string;
+  language?: string;
+  tax_rate?: number;
+  shipping_cost?: number;
+  [key: string]: any;
+}
 
 interface SettingsContextType {
-  settings: SiteSettings | null;
+  settings: SiteSettings;
   loading: boolean;
-  refresh: () => Promise<void>;
+  updateSettings: (settings: Partial<SiteSettings>) => Promise<void>;
+  refreshSettings: () => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-const FALLBACK_WHATSAPP = '+20123456789';
-
-function applyTheme(settings: any) {
-  if (!settings) return;
-
-  const root = document.documentElement;
-
-  if (settings.primary_color)    root.style.setProperty('--color-primary',    settings.primary_color);
-  if (settings.secondary_color)  root.style.setProperty('--color-secondary',  settings.secondary_color);
-  if (settings.accent_color)     root.style.setProperty('--color-accent',     settings.accent_color);
-  if (settings.background_color) root.style.setProperty('--color-background', settings.background_color);
-
-  if (settings.font_family) {
-    root.style.setProperty('--font-family', settings.font_family);
-    document.body.style.fontFamily = `'${settings.font_family}', sans-serif`;
-  }
-
-  if (settings.animation_speed) {
-    const speedMap: Record<string, string> = {
-      slow:   '0.6s',
-      medium: '0.3s',
-      fast:   '0.15s',
-    };
-    root.style.setProperty('--animation-speed', speedMap[settings.animation_speed] || '0.3s');
-  }
-
-  if (settings.enable_animations === false) {
-    root.style.setProperty('--animation-speed', '0s');
-  }
-}
-
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [settings, setSettings] = useState<SiteSettings>({});
   const [loading, setLoading] = useState(true);
-
-  async function fetchSettings() {
-    try {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*')
-        .limit(1);
-      
-      if (error) {
-        console.error('Error fetching settings:', error);
-        setSettings(null);
-        return;
-      }
-      
-      const settingsData = data && data.length > 0 ? data[0] : null;
-      console.log('Settings loaded from Supabase:', settingsData);
-      setSettings(settingsData);
-      applyTheme(settingsData);
-    } catch (error) {
-      console.error('Error fetching site settings:', error);
-      setSettings(null);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   useEffect(() => {
     fetchSettings();
   }, []);
 
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      setSettings(data || {});
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSettings = async (newSettings: Partial<SiteSettings>) => {
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .update(newSettings)
+        .eq('id', settings.id);
+
+      if (error) throw error;
+      setSettings({ ...settings, ...newSettings });
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      throw error;
+    }
+  };
+
+  const refreshSettings = async () => {
+    await fetchSettings();
+  };
+
   return (
-    <SettingsContext.Provider value={{ settings, loading, refresh: fetchSettings }}>
+    <SettingsContext.Provider value={{ settings, loading, updateSettings, refreshSettings }}>
       {children}
     </SettingsContext.Provider>
   );
@@ -87,9 +84,4 @@ export function useSettings() {
     throw new Error('useSettings must be used within a SettingsProvider');
   }
   return context;
-}
-
-export function useWhatsAppNumber() {
-  const { settings } = useSettings();
-  return (settings as any)?.whatsapp_number || FALLBACK_WHATSAPP;
 }

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useWishlist } from '../lib/wishlist-context';

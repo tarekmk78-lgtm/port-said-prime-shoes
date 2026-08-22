@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useSettings } from '../lib/settings-context';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
-import { MessageCircle, Package, MapPin, Phone, User, ArrowLeft } from 'lucide-react';
+import { MessageCircle, Package, MapPin, User, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function WhatsAppCheckout() {

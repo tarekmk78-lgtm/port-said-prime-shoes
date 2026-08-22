@@ -96,11 +96,11 @@ export function AdminProductForm() {
       setVariants(
         (variantData || []).map((v: ProductVariant) => ({
           id: v.id,
-          size: v.size,
-          color: v.color,
+          size: v.size || '',
+          color: v.color || '',
           color_code: v.color_code || '',
           stock_quantity: String(v.stock_quantity),
-          sku: v.sku,
+          sku: v.sku || '', // ✅ تم إضافة || '' هنا لحل المشكلة
         }))
       );
     } catch (error) {

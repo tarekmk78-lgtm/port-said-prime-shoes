@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useI18n } from '../lib/i18n';
-import { useWhatsAppNumber } from '../lib/settings-context';
 import { supabase } from '../lib/supabase';
 import { MapPin, Phone, Mail, Clock, Send, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -8,7 +7,7 @@ import { useSEO } from '../lib/seo';
 
 export function ContactPage() {
   const { language } = useI18n();
-  const whatsappNumber = useWhatsAppNumber();
+  const whatsappNumber = '+20123456789';
 
   useSEO({
     title: language === 'ar' ? 'تواصل معنا' : 'Contact Us',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useI18n } from '../lib/i18n';
@@ -8,7 +8,7 @@ import { ArrowRight } from 'lucide-react';
 import { useSEO } from '../lib/seo';
 
 export function CategoriesPage() {
-  const { t, language, isRTL } = useI18n();
+  const { language, isRTL } = useI18n();
 
   useSEO({
     title: language === 'ar' ? 'التصنيفات' : 'Categories',

@@ -1,10 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
-import { ContactMessage } from '../../types';
 import { formatDate } from '../../lib/utils';
 import { Mail, MailOpen, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+type ContactMessage = {
+  id: string;
+  created_at: string;
+  name: string;
+  email: string;
+  message: string;
+  is_read: boolean;
+};
 
 export function AdminMessages() {
   const { language } = useI18n();

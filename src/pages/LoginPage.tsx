@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,7 +42,7 @@ export function LoginPage() {
       } else {
         toast.success(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful');
         setTimeout(() => {
-          window.location.replace('/admin');
+          navigate('/admin', { replace: true });
         }, 1000);
       }
     } catch (error) {

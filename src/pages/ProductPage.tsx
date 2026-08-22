@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useCart } from '../lib/cart-context';
 import { useWishlist } from '../lib/wishlist-context';
-import { useWhatsAppNumber } from '../lib/settings-context';
 import { Product, ProductVariant, Review } from '../types';
 import { supabase } from '../lib/supabase';
-import { formatPrice, getDiscountPercentage, getWhatsAppUrl } from '../lib/utils';
+import { formatPrice, getDiscountPercentage } from '../lib/utils';
 import { useSEO, useJsonLd, buildProductSchema, buildBreadcrumbSchema } from '../lib/seo';
 import { ProductCard } from '../components/product/ProductCard';
 import { ReviewForm } from '../components/product/ReviewForm';
@@ -16,7 +15,7 @@ import toast from 'react-hot-toast';
 import {
   Heart, Minus, Plus, Star,
   Truck, RotateCcw, ShieldCheck, MessageCircle,
-  ChevronRight, ChevronLeft, Package, Check
+  ChevronRight, ChevronLeft, Check
 } from 'lucide-react';
 
 export function ProductPage() {
@@ -25,7 +24,6 @@ export function ProductPage() {
   const { language, t } = useI18n();
   const { addItem } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const whatsappNumber = useWhatsAppNumber();
   
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);

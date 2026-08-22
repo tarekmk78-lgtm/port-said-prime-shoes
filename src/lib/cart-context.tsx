@@ -1,7 +1,18 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './auth-context';
-import { Product, ProductVariant, CartItem } from '../types';
+import { Product, ProductVariant } from '../types';
+
+// تعريف CartItem محلياً مع كل الـ properties المطلوبة
+interface CartItem {
+  id: string;
+  product_id: string;
+  product?: any;
+  variant_id?: string;
+  variant?: any;
+  quantity: number;
+  price: number;
+}
 
 interface CartContextType {
   items: CartItem[];

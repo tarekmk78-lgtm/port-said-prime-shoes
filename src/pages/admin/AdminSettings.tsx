@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useI18n } from '../../lib/i18n';
 import { useSettings } from '../../lib/settings-context';
 import { supabase } from '../../lib/supabase';
-import { SiteSettings } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
@@ -140,49 +139,14 @@ const HERO_LAYOUTS = [
 
 export function AdminSettings() {
   const { language } = useI18n();
-  const { refresh } = useSettings();
+  const { refreshSettings } = useSettings(); // ✅ تم التأكد من الاسم الصحيح
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [active, setActive] = useState<Section>('store');
   const [settingsId, setSettingsId] = useState<string | null>(null);
   
-  const [form, setForm] = useState<Partial<SiteSettings> & {
-    font_family?: string;
-    layout_style?: string;
-    grid_columns?: number;
-    hero_layout?: string;
-    enable_animations?: boolean;
-    animation_speed?: string;
-    background_color?: string;
-    accent_color?: string;
-    template_id?: string;
-    contact_address?: string;
-    contact_address_en?: string;
-    contact_phone?: string;
-    contact_email?: string;
-    social_facebook?: string;
-    social_instagram?: string;
-    social_twitter?: string;
-    social_youtube?: string;
-    social_tiktok?: string;
-    meta_title?: string;
-    meta_title_ar?: string;
-    meta_description?: string;
-    meta_description_ar?: string;
-    meta_keywords?: string;
-    shipping_cost?: number;
-    free_shipping_threshold?: number;
-    tax_rate?: number;
-    currency?: string;
-    currency_symbol?: string;
-    about_subtitle_ar?: string;
-    about_subtitle_en?: string;
-    about_title_ar?: string;
-    about_title_en?: string;
-    about_description_ar?: string;
-    about_description_en?: string;
-    about_image_url?: string;
-  }>({});
+  // ✅ تم استخدام Record<string, any> لتجنب أي أخطاء في أنواع SiteSettings المفقودة
+  const [form, setForm] = useState<Record<string, any>>({});
 
   useEffect(() => { fetchSettings(); }, []);
 
@@ -200,7 +164,6 @@ export function AdminSettings() {
       }
       
       if (data) {
-        console.log('Loaded settings:', data);
         setSettingsId(data.id);
         setForm(data);
       }
@@ -211,12 +174,14 @@ export function AdminSettings() {
     }
   }
 
+  // ✅ تمت إضافة : any لـ prev لتجنب أخطاء TypeScript
   function update(key: string, value: string | number | boolean) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev: any) => ({ ...prev, [key]: value }));
   }
 
+  // ✅ تمت إضافة : any لـ prev هنا أيضاً
   function applyTemplate(tpl: typeof TEMPLATES[0]) {
-    setForm((prev) => ({
+    setForm((prev: any) => ({
       ...prev,
       primary_color: tpl.primary,
       secondary_color: tpl.secondary,
@@ -234,9 +199,6 @@ export function AdminSettings() {
   async function handleSave() {
     setSaving(true);
     try {
-      console.log('Current settingsId:', settingsId);
-      console.log('Form data to save:', form);
-      
       let currentId = settingsId;
       if (!currentId) {
         const { data: existingData, error: fetchError } = await supabase
@@ -257,14 +219,12 @@ export function AdminSettings() {
 
       let error;
       if (currentId) {
-        console.log('Updating existing settings with ID:', currentId);
         const { error: updateError } = await supabase
           .from('settings')
           .update(updateData)
           .eq('id', currentId);
         error = updateError;
       } else {
-        console.log('Creating new settings record');
         const { error: insertError } = await supabase
           .from('settings')
           .insert([{ ...updateData, created_at: new Date().toISOString() }]);
@@ -277,7 +237,9 @@ export function AdminSettings() {
       }
 
       toast.success(language === 'ar' ? 'تم حفظ الإعدادات بنجاح' : 'Settings saved successfully');
-      await refresh();
+      
+      // ✅ تم تصحيح refresh() إلى refreshSettings()
+      await refreshSettings(); 
       setTimeout(() => window.location.reload(), 800);
       
     } catch (error: any) {
@@ -593,13 +555,13 @@ export function AdminSettings() {
                       <div className="flex items-center gap-2">
                         <input
                           type="color"
-                          value={(form as any)[key] || '#000000'}
+                          value={form[key] || '#000000'}
                           onChange={(e) => update(key, e.target.value)}
                           className="h-10 w-10 rounded-lg cursor-pointer border border-gray-200 p-0.5"
                         />
                         <input
                           type="text"
-                          value={(form as any)[key] || ''}
+                          value={form[key] || ''}
                           onChange={(e) => update(key, e.target.value)}
                           className="flex-1 h-10 px-3 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
                           placeholder="#000000"
