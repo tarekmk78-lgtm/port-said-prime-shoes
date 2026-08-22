@@ -6,12 +6,22 @@ import { Product, Category } from '../types';
 import { supabase } from '../lib/supabase';
 import { ProductCard } from '../components/product/ProductCard';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
-import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useSEO } from '../lib/seo';
 
 const PRODUCTS_PER_PAGE = 12;
+
+// قائمة الماركات لعرض الأسماء بشكل صحيح
+const BRANDS = [
+  { id: 'clarks', name: 'Clarks', name_ar: 'كلاركس' },
+  { id: 'ecco', name: 'ECCO', name_ar: 'إيكو' },
+  { id: 'timberland', name: 'Timberland', name_ar: 'تيمبرلاند' },
+  { id: 'cat', name: 'CAT', name_ar: 'كاتربيلر' },
+  { id: 'skechers', name: 'Skechers', name_ar: 'سكيتشرز' },
+  { id: 'loropiana', name: 'Loro Piana', name_ar: 'لورو بيانا' },
+  { id: 'calvinklein', name: 'Calvin Klein', name_ar: 'كالفين كلاين' },
+  { id: 'hushpuppies', name: 'Hush Puppies', name_ar: 'هاتش بابس' },
+];
 
 export function ShopPage() {
   const { language } = useI18n();
@@ -19,10 +29,7 @@ export function ShopPage() {
   
   useSEO({
     title: language === 'ar' ? 'المتجر' : 'Shop',
-    description:
-      language === 'ar'
-        ? 'تصفح كل أحذية بورسعيد برايم شوز — رجالي،وأحدث المجموعات'
-        : "Browse Port Said Prime Shoes's full footwear collection — men's, women's, sport, and the latest arrivals",
+    description: language === 'ar' ? 'تصفح كل أحذية بورسعيد برايم شوز' : "Browse Port Said Prime Shoes's full footwear collection",
     url: '/shop',
   });
 
@@ -34,6 +41,7 @@ export function ShopPage() {
   const [page, setPage] = useState(1);
   
   const categoryFilter = searchParams.get('category') || '';
+  const brandFilter = searchParams.get('brand') || ''; // ✅ إضافة فلتر الماركة
   const filterType = searchParams.get('filter') || '';
   const sortBy = searchParams.get('sort') || 'newest';
   const priceMin = searchParams.get('priceMin') || '';
@@ -48,6 +56,11 @@ export function ShopPage() {
           .select('*, categories()')
           .eq('is_active', true);
 
+        // ✅ فلتر الماركة
+        if (brandFilter) {
+          query = query.eq('brand', brandFilter);
+        }
+
         if (categoryFilter) {
           const { data: catData } = await supabase
             .from('categories')
@@ -59,7 +72,6 @@ export function ShopPage() {
           }
         }
 
-        // ✅ معالجة الفلتر - سواء predefined أو نص (زي صيف، شتاء)
         if (filterType === 'new') {
           query = query.eq('is_new', true);
         } else if (filterType === 'bestseller') {
@@ -69,16 +81,11 @@ export function ShopPage() {
         } else if (filterType === 'sale') {
           query = query.not('compare_at_price', 'is', null).gt('compare_at_price', 0);
         } else if (filterType) {
-          // ✅ لو الفلتر نص (زي "صيف"، "شتاء") - ابحث في الاسم والوصف
           query = query.or(`name.ilike.%${filterType}%,name_ar.ilike.%${filterType}%,description.ilike.%${filterType}%,description_ar.ilike.%${filterType}%`);
         }
 
-        if (priceMin) {
-          query = query.gte('price', parseFloat(priceMin));
-        }
-        if (priceMax) {
-          query = query.lte('price', parseFloat(priceMax));
-        }
+        if (priceMin) query = query.gte('price', parseFloat(priceMin));
+        if (priceMax) query = query.lte('price', parseFloat(priceMax));
 
         if (sortBy === 'newest') {
           query = query.order('created_at', { ascending: false });
@@ -107,7 +114,7 @@ export function ShopPage() {
       }
     }
     fetchData();
-  }, [categoryFilter, filterType, sortBy, priceMin, priceMax]);
+  }, [categoryFilter, brandFilter, filterType, sortBy, priceMin, priceMax]); // ✅ إضافة brandFilter هنا
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery) return products;
@@ -154,60 +161,46 @@ export function ShopPage() {
     setPage(1);
   };
 
-  const hasActiveFilters = categoryFilter || filterType || priceMin || priceMax;
+  const hasActiveFilters = categoryFilter || brandFilter || filterType || priceMin || priceMax;
 
-  // ✅ تحديد العنوان الفرعي حسب الفلتر
+  // ✅ تحديث العنوان الفرعي ليشمل الماركة
   const getSubtitle = () => {
+    if (brandFilter) {
+      const brand = BRANDS.find(b => b.id === brandFilter);
+      const brandName = language === 'ar' ? (brand?.name_ar || brandFilter) : (brand?.name || brandFilter);
+      return language === 'ar' ? `جميع منتجات ماركة ${brandName}` : `All ${brandName} Products`;
+    }
     if (filterType) {
-      if (filterType === 'new') {
-        return language === 'ar' ? 'وصل حديثاً' : 'New Arrivals';
-      }
-      if (filterType === 'bestseller') {
-        return language === 'ar' ? 'الأكثر مبيعاً' : 'Bestsellers';
-      }
-      if (filterType === 'featured') {
-        return language === 'ar' ? 'مميزة' : 'Featured';
-      }
-      if (filterType === 'sale') {
-        return language === 'ar' ? 'عروض وخصومات' : 'On Sale';
-      }
-      // لو نص (زي صيف، شتاء)
-      return language === 'ar' 
-        ? `نتائج البحث عن: ${filterType}`
-        : `Results for: ${filterType}`;
+      if (filterType === 'new') return language === 'ar' ? 'وصل حديثاً' : 'New Arrivals';
+      if (filterType === 'bestseller') return language === 'ar' ? 'الأكثر مبيعاً' : 'Bestsellers';
+      if (filterType === 'featured') return language === 'ar' ? 'مميزة' : 'Featured';
+      if (filterType === 'sale') return language === 'ar' ? 'عروض وخصومات' : 'On Sale';
+      return language === 'ar' ? `نتائج البحث عن: ${filterType}` : `Results for: ${filterType}`;
     }
     if (searchQuery) {
-      return language === 'ar'
-        ? `نتائج البحث عن: ${searchQuery}`
-        : `Results for: ${searchQuery}`;
+      return language === 'ar' ? `نتائج البحث عن: ${searchQuery}` : `Results for: ${searchQuery}`;
     }
-    return language === 'ar'
-      ? `استكشف ${products.length} منتج`
-      : `Explore ${products.length} products`;
+    return language === 'ar' ? `استكشف ${products.length} منتج` : `Explore ${products.length} products`;
   };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
       {/* Page header banner */}
-      <div className="bg-ink py-14 md:py-20">
+      <div className="bg-[#1c1917] py-14 md:py-20">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
-          <span className="eyebrow justify-center text-gold-light">
+          <span className="text-[#d4a017] text-sm tracking-[0.2em] uppercase font-semibold">
             {language === 'ar' ? 'كل المجموعات' : 'Full collection'}
           </span>
           <h1 className="font-display text-3xl md:text-4xl font-semibold text-white mt-3">
-            {language === 'ar' ? 'المتجر' : 'Shop'}
+            {brandFilter ? (BRANDS.find(b => b.id === brandFilter)?.name || 'Brand') : (language === 'ar' ? 'المتجر' : 'Shop')}
           </h1>
-          {/* ✅ العنوان الديناميكي */}
-          <p className="text-white/55 mt-3">
-            {getSubtitle()}
-          </p>
+          <p className="text-white/55 mt-3">{getSubtitle()}</p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
         {/* Filters Bar */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
-          {/* Search */}
           <form onSubmit={handleSearch} className="flex-1">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 rtl:right-4 rtl:left-auto" />
@@ -220,18 +213,17 @@ export function ShopPage() {
               />
             </div>
           </form>
-          {/* Sort & Filter Buttons */}
           <div className="flex gap-2">
-            <Select
+            <select
               value={sortBy}
               onChange={(e) => updateFilter('sort', e.target.value)}
-              options={[
-                { value: 'newest', label: language === 'ar' ? 'الأحدث' : 'Newest' },
-                { value: 'price-asc', label: language === 'ar' ? 'السعر: من الأقل' : 'Price: Low to High' },
-                { value: 'price-desc', label: language === 'ar' ? 'السعر: من الأعلى' : 'Price: High to Low' },
-                { value: 'popular', label: language === 'ar' ? 'الأكثر شعبية' : 'Most Popular' },
-              ]}
-            />
+              className="h-11 px-4 rounded-sm border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+            >
+              <option value="newest">{language === 'ar' ? 'الأحدث' : 'Newest'}</option>
+              <option value="price-asc">{language === 'ar' ? 'السعر: من الأقل' : 'Price: Low to High'}</option>
+              <option value="price-desc">{language === 'ar' ? 'السعر: من الأعلى' : 'Price: High to Low'}</option>
+              <option value="popular">{language === 'ar' ? 'الأكثر شعبية' : 'Most Popular'}</option>
+            </select>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`h-11 px-4 rounded-sm border flex items-center gap-2 transition-colors ${
@@ -241,9 +233,7 @@ export function ShopPage() {
               }`}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden md:inline">
-                {language === 'ar' ? 'تصفية' : 'Filters'}
-              </span>
+              <span className="hidden md:inline">{language === 'ar' ? 'تصفية' : 'Filters'}</span>
             </button>
           </div>
         </div>
@@ -257,6 +247,24 @@ export function ShopPage() {
             className="bg-white rounded-sm border border-gray-200 p-6 mb-8"
           >
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Brand Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {language === 'ar' ? 'الماركة' : 'Brand'}
+                </label>
+                <select
+                  value={brandFilter}
+                  onChange={(e) => updateFilter('brand', e.target.value)}
+                  className="w-full h-10 px-3 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                >
+                  <option value="">{language === 'ar' ? 'جميع الماركات' : 'All Brands'}</option>
+                  {BRANDS.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {language === 'ar' ? b.name_ar : b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -292,39 +300,21 @@ export function ShopPage() {
                   <option value="sale">{language === 'ar' ? 'عروض' : 'On Sale'}</option>
                 </select>
               </div>
-              {/* Price Min */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {language === 'ar' ? 'السعر من' : 'Price From'}
-                </label>
-                <input
-                  type="number"
-                  value={priceMin}
-                  onChange={(e) => updateFilter('priceMin', e.target.value)}
-                  placeholder="0"
-                  className="w-full h-10 px-3 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-                />
-              </div>
-              {/* Price Max */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {language === 'ar' ? 'السعر إلى' : 'Price To'}
-                </label>
-                <input
-                  type="number"
-                  value={priceMax}
-                  onChange={(e) => updateFilter('priceMax', e.target.value)}
-                  placeholder="10000"
-                  className="w-full h-10 px-3 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-                />
+              {/* Price Min/Max combined for space or keep separate */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{language === 'ar' ? 'من' : 'From'}</label>
+                  <input type="number" value={priceMin} onChange={(e) => updateFilter('priceMin', e.target.value)} placeholder="0" className="w-full h-10 px-3 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{language === 'ar' ? 'إلى' : 'To'}</label>
+                  <input type="number" value={priceMax} onChange={(e) => updateFilter('priceMax', e.target.value)} placeholder="10000" className="w-full h-10 px-3 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]" />
+                </div>
               </div>
             </div>
             {hasActiveFilters && (
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200">
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-gray-500 hover:text-red-600 flex items-center gap-1"
-                >
+                <button onClick={clearFilters} className="text-sm text-gray-500 hover:text-red-600 flex items-center gap-1">
                   <X className="h-4 w-4" />
                   {language === 'ar' ? 'مسح الفلاتر' : 'Clear Filters'}
                 </button>
@@ -336,14 +326,16 @@ export function ShopPage() {
         {/* Active Filters Tags */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mb-6">
+            {brandFilter && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#B8956E]/10 text-[#B8956E] rounded-full text-sm">
+                {BRANDS.find(b => b.id === brandFilter)?.name_ar || BRANDS.find(b => b.id === brandFilter)?.name || brandFilter}
+                <button onClick={() => updateFilter('brand', '')}><X className="h-3 w-3" /></button>
+              </span>
+            )}
             {categoryFilter && (
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#B8956E]/10 text-[#B8956E] rounded-full text-sm">
-                {language === 'ar'
-                  ? categories.find((c) => c.slug === categoryFilter)?.name_ar
-                  : categories.find((c) => c.slug === categoryFilter)?.name}
-                <button onClick={() => updateFilter('category', '')}>
-                  <X className="h-3 w-3" />
-                </button>
+                {language === 'ar' ? categories.find((c) => c.slug === categoryFilter)?.name_ar : categories.find((c) => c.slug === categoryFilter)?.name}
+                <button onClick={() => updateFilter('category', '')}><X className="h-3 w-3" /></button>
               </span>
             )}
             {filterType && (
@@ -352,11 +344,8 @@ export function ShopPage() {
                 {filterType === 'bestseller' && (language === 'ar' ? 'الأكثر مبيعاً' : 'Bestsellers')}
                 {filterType === 'featured' && (language === 'ar' ? 'مميزة' : 'Featured')}
                 {filterType === 'sale' && (language === 'ar' ? 'عروض' : 'On Sale')}
-                {/* لو نص */}
                 {!['new', 'bestseller', 'featured', 'sale'].includes(filterType) && filterType}
-                <button onClick={() => updateFilter('filter', '')}>
-                  <X className="h-3 w-3" />
-                </button>
+                <button onClick={() => updateFilter('filter', '')}><X className="h-3 w-3" /></button>
               </span>
             )}
           </div>
@@ -375,45 +364,24 @@ export function ShopPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-12">
-                <button
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                  className="px-4 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => setPage(page - 1)} disabled={page === 1} className="px-4 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   {language === 'ar' ? 'السابق' : 'Previous'}
                 </button>
                 <div className="flex gap-1">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
-                    }
+                    if (totalPages <= 5) pageNum = i + 1;
+                    else if (page <= 3) pageNum = i + 1;
+                    else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = page - 2 + i;
                     return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`w-10 h-10 rounded-sm transition-colors ${
-                          page === pageNum
-                            ? 'bg-[#B8956E] text-white'
-                            : 'bg-white border border-gray-200 hover:bg-gray-50'
-                        }`}
-                      >
+                      <button key={pageNum} onClick={() => setPage(pageNum)} className={`w-10 h-10 rounded-sm transition-colors ${page === pageNum ? 'bg-[#B8956E] text-white' : 'bg-white border border-gray-200 hover:bg-gray-50'}`}>
                         {pageNum}
                       </button>
                     );
                   })}
                 </div>
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page === totalPages}
-                  className="px-4 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => setPage(page + 1)} disabled={page === totalPages} className="px-4 py-2 rounded-sm border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   {language === 'ar' ? 'التالي' : 'Next'}
                 </button>
               </div>
@@ -422,8 +390,13 @@ export function ShopPage() {
         ) : (
           <div className="text-center py-20">
             <p className="text-gray-500 text-lg font-display">
-              {language === 'ar' ? 'لا توجد منتجات' : 'No products found'}
+              {language === 'ar' ? 'لا توجد منتجات تطابق بحثك' : 'No products found matching your criteria'}
             </p>
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="mt-4 text-[#B8956E] hover:underline">
+                {language === 'ar' ? 'مسح الفلاتر وعرض كل المنتجات' : 'Clear filters and view all products'}
+              </button>
+            )}
           </div>
         )}
       </div>
