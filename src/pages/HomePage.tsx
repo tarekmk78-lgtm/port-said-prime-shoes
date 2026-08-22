@@ -5,7 +5,7 @@ import { useI18n } from '../lib/i18n';
 import { HeroSection } from '../components/home/HeroSection';
 import { NewArrivalsSlider } from '../components/home/NewArrivalsSlider'; 
 import { Category, Banner } from '../types';
-import { ArrowRight, Truck, ShieldCheck, Award, Sparkles } from 'lucide-react';
+import { ArrowRight, Truck, ShieldCheck, Award, Sparkles, CreditCard, Factory, Gem } from 'lucide-react';
 
 export function HomePage() {
   const { language } = useI18n();
@@ -40,16 +40,43 @@ export function HomePage() {
     fetchData();
   }, []);
 
+  // بيانات الشريط المتحرك
+  const features = [
+    { icon: CreditCard, text_ar: 'دفع آمن وسهل', text_en: 'Secure & Easy Payment' },
+    { icon: ShieldCheck, text_ar: 'ضمان استرجاع 14 يوم', text_en: '14-Day Return Guarantee' },
+    { icon: Truck, text_ar: 'شحن مجاني عند شراء أكثر من حذاء', text_en: 'Free Shipping on 2+ Shoes' },
+    { icon: Factory, text_ar: 'صناعة فيتنامي عالية الجودة', text_en: 'High-Quality Vietnamese Craftsmanship' },
+    { icon: Gem, text_ar: 'جلد طبيعي 100%', text_en: '100% Genuine Leather' },
+  ];
+
   return (
     <div className="min-h-screen bg-white">
       
       {/* 1. Hero Section */}
       <HeroSection />
 
-      {/* 2. وصل حديثاً */}
+      {/* 2. الشريط المتحرك (Marquee) */}
+      <div className="bg-black text-white py-4 overflow-hidden">
+        <div className="flex animate-marquee whitespace-nowrap">
+          {/* المجموعة الأولى */}
+          {[...features, ...features].map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <div key={index} className="flex items-center gap-3 mx-8 shrink-0">
+                <Icon className="w-5 h-5 text-amber-500" />
+                <span className="text-sm font-medium">
+                  {language === 'ar' ? feature.text_ar : feature.text_en}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. وصل حديثاً */}
       <NewArrivalsSlider />
 
-      {/* 3. Banners Section */}
+      {/* 4. Banners Section */}
       {banners.length > 0 && (
         <section className="py-12 md:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -100,7 +127,7 @@ export function HomePage() {
         </section>
       )}
 
-      {/* 4. Categories Section */}
+      {/* 5. Categories Section */}
       <section className="py-16 md:py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-12">
@@ -185,7 +212,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 5. Why Choose Us */}
+      {/* 6. Why Choose Us */}
       <section className="py-16 md:py-24 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">
@@ -193,7 +220,6 @@ export function HomePage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             
-            {/* Feature 1 */}
             <div className="p-6 rounded-2xl hover:bg-gray-50 transition-colors duration-300">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-black flex items-center justify-center">
                 <Award className="w-8 h-8 text-amber-500" />
@@ -208,7 +234,6 @@ export function HomePage() {
               </p>
             </div>
 
-            {/* Feature 2 */}
             <div className="p-6 rounded-2xl hover:bg-gray-50 transition-colors duration-300">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-black flex items-center justify-center">
                 <Truck className="w-8 h-8 text-amber-500" />
@@ -223,7 +248,6 @@ export function HomePage() {
               </p>
             </div>
 
-            {/* Feature 3 */}
             <div className="p-6 rounded-2xl hover:bg-gray-50 transition-colors duration-300">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-black flex items-center justify-center">
                 <ShieldCheck className="w-8 h-8 text-amber-500" />

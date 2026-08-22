@@ -87,3 +87,81 @@ code {
 .zoom-container:hover .zoom-image {
   transform: scale(1.5);
 }
+
+/* ============================================
+   Marquee Animation - الشريط المتحرك
+   ============================================ */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ============================================
+   Smooth Scroll
+   ============================================ */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================
+   Custom Scrollbar
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #B8956E;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9a7d5c;
+}
+
+/* ============================================
+   Font Display Class
+   ============================================ */
+.font-display {
+  font-family: 'Playfair Display', 'Cairo', serif;
+}
+
+/* ============================================
+   RTL Support for Marquee
+   ============================================ */
+[dir="rtl"] .animate-marquee {
+  animation-direction: reverse;
+}
+
+/* ============================================
+   Focus Styles
+   ============================================ */
+*:focus-visible {
+  outline: 2px solid #B8956E;
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Selection Color
+   ============================================ */
+::selection {
+  background: #B8956E;
+  color: white;
+}
