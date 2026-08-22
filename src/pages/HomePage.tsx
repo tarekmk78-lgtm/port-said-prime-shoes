@@ -6,63 +6,12 @@ import { HeroSection } from '../components/home/HeroSection';
 import { Category, Banner, Product } from '../types';
 import { ArrowRight, Truck, ShieldCheck, Award, Sparkles, CreditCard, Factory, Gem, Heart } from 'lucide-react';
 
-// لوجوهات الماركات
-const BRANDS = [
-  {
-    id: 'clarks',
-    name: 'Clarks',
-    name_ar: 'كلاركس',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Clarks_Originals_logo.svg/800px-Clarks_Originals_logo.svg.png',
-  },
-  {
-    id: 'ecco',
-    name: 'ECCO',
-    name_ar: 'إيكو',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/ECCO_logo.svg/800px-ECCO_logo.svg.png',
-  },
-  {
-    id: 'timberland',
-    name: 'Timberland',
-    name_ar: 'تيمبرلاند',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Timberland_logo.svg/800px-Timberland_logo.svg.png',
-  },
-  {
-    id: 'cat',
-    name: 'CAT',
-    name_ar: 'كاتربيلر',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Caterpillar_logo.svg/800px-Caterpillar_logo.svg.png',
-  },
-  {
-    id: 'skechers',
-    name: 'Skechers',
-    name_ar: 'سكيتشرز',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Skechers_logo.svg/800px-Skechers_logo.svg.png',
-  },
-  {
-    id: 'louboutin',
-    name: 'Christian Louboutin',
-    name_ar: 'لوروبيانا',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Christian_Louboutin_logo.svg/800px-Christian_Louboutin_logo.svg.png',
-  },
-  {
-    id: 'calvinklein',
-    name: 'Calvin Klein',
-    name_ar: 'كالفين كلاين',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Calvin_Klein_logo.svg/800px-Calvin_Klein_logo.svg.png',
-  },
-  {
-    id: 'hushpuppies',
-    name: 'Hush Puppies',
-    name_ar: 'هاتش بابس',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Hush_Puppies_logo.svg/800px-Hush_Puppies_logo.svg.png',
-  },
-];
-
 export function HomePage() {
   const { language } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
+  const [brands, setBrands] = useState<any[]>([]); // ✅ تمت الإضافة
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,9 +37,17 @@ export function HomePage() {
           .order('created_at', { ascending: false })
           .limit(10);
 
+        // ✅ جلب الماركات من قاعدة البيانات
+        const { data: brandsData } = await supabase
+          .from('brands')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+
         setCategories(categoriesData || []);
         setBanners(bannersData || []);
         setNewArrivals(newArrivalsData || []);
+        setBrands(brandsData || []); // ✅ حفظ الماركات
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -248,9 +205,17 @@ export function HomePage() {
               {newArrivals.map((product) => {
                 const productName = language === 'ar' ? product.name_ar : product.name;
                 const productPrice = product.price || 0;
-                const oldPrice = product.old_price || null;
-                const badge = product.is_new ? (language === 'ar' ? 'جديد' : 'New') : 
-                             product.discount_percent ? `-${product.discount_percent}%` : null;
+                
+                // ✅ تصحيح أخطاء TypeScript هنا
+                const oldPrice = product.compare_at_price || null;
+                const hasDiscount = oldPrice && oldPrice > productPrice;
+                const discountPercent = hasDiscount ? Math.round(((oldPrice - productPrice) / oldPrice) * 100) : null;
+                
+                const badge = product.is_new 
+                  ? (language === 'ar' ? 'جديد' : 'New') 
+                  : discountPercent 
+                    ? `-${discountPercent}%` 
+                    : null;
 
                 return (
                   <Link
@@ -299,11 +264,12 @@ export function HomePage() {
                           </span>
                         )}
                       </div>
+                      {/* ✅ تصحيح review_count إلى reviews_count */}
                       {product.rating && (
                         <div className="flex items-center gap-1 mt-1">
                           <span className="text-xs text-amber-500">★</span>
                           <span className="text-[10px] md:text-xs text-gray-600">
-                            {product.rating} ({product.review_count || 0})
+                            {product.rating} ({product.reviews_count || 0})
                           </span>
                         </div>
                       )}
@@ -330,7 +296,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 5. تسوق حسب الماركة (باللوجوهات الأصلية) */}
+      {/* 5. تسوق حسب الماركة (ديناميكي من قاعدة البيانات) ✅ */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-8 md:mb-12">
@@ -348,34 +314,45 @@ export function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
-            {BRANDS.map((brand) => (
-              <Link
-                key={brand.id}
-                to={`/shop?brand=${brand.id}`}
-                className="group bg-white rounded-xl p-6 md:p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col items-center justify-center h-32 md:h-40"
-              >
-                <div className="w-full h-full flex items-center justify-center">
-                  <img
-                    src={brand.logo}
-                    alt={brand.name}
-                    className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                  <span className="hidden text-lg md:text-xl font-bold text-gray-700 group-hover:text-amber-600 transition-colors">
-                    {brand.name}
-                  </span>
-                </div>
-                <p className="text-xs md:text-sm text-gray-500 mt-2 font-medium">
-                  {language === 'ar' ? brand.name_ar : brand.name}
-                </p>
-              </Link>
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="animate-pulse bg-gray-200 rounded-xl h-32 md:h-40"></div>
+              ))}
+            </div>
+          ) : brands.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+              {brands.map((brand) => (
+                <Link
+                  key={brand.id}
+                  to={`/shop?brand=${brand.slug}`}
+                  className="group bg-white rounded-xl p-6 md:p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col items-center justify-center h-32 md:h-40"
+                >
+                  <div className="w-full h-full flex items-center justify-center">
+                    {brand.logo_url ? (
+                      <img
+                        src={brand.logo_url}
+                        alt={language === 'ar' ? brand.name_ar : brand.name}
+                        className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="text-lg md:text-xl font-bold text-gray-700 group-hover:text-amber-600 transition-colors">
+                        {language === 'ar' ? brand.name_ar : brand.name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs md:text-sm text-gray-500 mt-2 font-medium">
+                    {language === 'ar' ? brand.name_ar : brand.name}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              {language === 'ar' ? 'لا توجد ماركات متاحة حالياً' : 'No brands available'}
+            </div>
+          )}
 
           <div className="text-center mt-8 md:mt-12">
             <Link
