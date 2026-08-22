@@ -33,7 +33,8 @@ const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers').then((m
 const AdminReviews = lazy(() => import('./pages/admin/AdminReviews').then((m) => ({ default: m.AdminReviews })));
 const AdminCMS = lazy(() => import('./pages/admin/AdminCMS').then((m) => ({ default: m.AdminCMS })));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((m) => ({ default: m.AdminSettings })));
-const AdminHeroSlides = lazy(() => import('./pages/admin/AdminHeroSlides').then((m) => ({ default: m.AdminHeroSlides }))); // ✅ تمت الإضافة
+const AdminHeroSlides = lazy(() => import('./pages/admin/AdminHeroSlides').then((m) => ({ default: m.AdminHeroSlides })));
+const AdminBrands = lazy(() => import('./pages/admin/AdminBrands').then((m) => ({ default: m.AdminBrands }))); // ✅ تمت الإضافة
 
 const queryClient = new QueryClient();
 
@@ -100,7 +101,8 @@ function AppRoutes() {
           <Route path="reviews" element={<AdminReviews />} />
           <Route path="media" element={<AdminCMS />} />
           <Route path="settings" element={<AdminSettings />} />
-          <Route path="hero" element={<AdminHeroSlides />} /> {/* ✅ تمت الإضافة */}
+          <Route path="hero" element={<AdminHeroSlides />} />
+          <Route path="brands" element={<AdminBrands />} /> {/* ✅ تمت الإضافة */}
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

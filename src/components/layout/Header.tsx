@@ -5,6 +5,7 @@ import { useI18n } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth-context';
 import { useCart } from '../../lib/cart-context';
 import { useWhatsAppNumber } from '../../lib/settings-context';
+import { supabase } from '../../lib/supabase'; // ✅ تمت الإضافة
 import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles, Truck, ShieldCheck } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -38,7 +39,24 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  
+  // ✅ حالة الماركات
+  const [brands, setBrands] = useState<any[]>([]);
+
   const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  // ✅ جلب الماركات من قاعدة البيانات
+  useEffect(() => {
+    async function fetchBrands() {
+      const { data } = await supabase
+        .from('brands')
+        .select('id, name, name_ar, logo_url, slug')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      if (data) setBrands(data);
+    }
+    fetchBrands();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -114,7 +132,7 @@ export function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-8">
+            <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
               {NAV_LINKS.map((link) => (
                 <Link 
                   key={link.key} 
@@ -125,6 +143,41 @@ export function Header() {
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-600 transition-all duration-300 group-hover:w-full rtl:left-auto rtl:right-0"></span>
                 </Link>
               ))}
+
+              {/* ✅ قائمة الماركات المنسدلة */}
+              {brands.length > 0 && (
+                <div className="relative group">
+                  <button className="flex items-center gap-1 text-sm font-semibold text-gray-700 hover:text-black transition-colors py-1">
+                    {language === 'ar' ? 'الماركات' : 'Brands'}
+                    <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
+                  </button>
+                  
+                  <div className="absolute top-full left-0 rtl:left-auto rtl:right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 max-h-80 overflow-y-auto">
+                    {brands.map((brand) => (
+                      <Link
+                        key={brand.id}
+                        to={`/shop?brand=${brand.slug}`}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors group/item"
+                      >
+                        {brand.logo_url ? (
+                          <img 
+                            src={brand.logo_url} 
+                            alt={language === 'ar' ? brand.name_ar : brand.name} 
+                            className="w-10 h-8 object-contain filter grayscale group-hover/item:grayscale-0 transition-all duration-300" 
+                          />
+                        ) : (
+                          <span className="text-sm font-medium text-gray-700 group-hover/item:text-amber-600">
+                            {language === 'ar' ? brand.name_ar : brand.name}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500 group-hover/item:text-gray-900">
+                          {language === 'ar' ? brand.name_ar : brand.name}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </nav>
 
             {/* Actions (Search, Wishlist, Cart, Account) */}
@@ -220,6 +273,30 @@ export function Header() {
                       {t(link.key)}
                     </Link>
                   ))}
+                  
+                  {/* ✅ عرض الماركات في الموبايل */}
+                  {brands.length > 0 && (
+                    <div className="px-6 py-4 border-b border-gray-50">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                        {language === 'ar' ? 'الماركات' : 'Brands'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {brands.map((brand) => (
+                          <Link
+                            key={brand.id}
+                            to={`/shop?brand=${brand.slug}`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                          >
+                            {brand.logo_url && (
+                              <img src={brand.logo_url} alt={brand.name} className="w-4 h-4 object-contain" />
+                            )}
+                            {language === 'ar' ? brand.name_ar : brand.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   {isAdmin && (
                     <Link to="/admin" className="block px-6 py-4 text-base font-bold text-amber-600 hover:bg-amber-50 border-b border-gray-50 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
