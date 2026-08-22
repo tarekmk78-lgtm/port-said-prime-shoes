@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
@@ -46,7 +46,7 @@ export function HeroSection() {
               subtitle_ar: 'مجموعة صيف 2026',
               subtitle_en: 'Summer Collection 2026',
               description_ar: 'اكتشف التشكيلة الجديدة',
-              description_en: 'Discover our new collection',
+              description: 'Discover our new collection',
               image_url: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=1920&q=80',
               btn_ar: 'تسوق الآن',
               btn_en: 'Shop Now',
@@ -80,7 +80,7 @@ export function HeroSection() {
   const current = slides[currentSlide];
   const title = language === 'ar' ? current.title_ar : current.title_en;
   const subtitle = language === 'ar' ? current.subtitle_ar : current.subtitle_en;
-  const description = language === 'ar' ? (current.description_ar || '') : (current.description_en || '');
+  const description = language === 'ar' ? (current.description_ar || '') : (current.description || '');
   const buttonText = language === 'ar' ? (current.btn_ar || 'تسوق الآن') : (current.btn_en || 'Shop Now');
   const buttonLink = current.link || '/shop';
   const isAr = language === 'ar';
