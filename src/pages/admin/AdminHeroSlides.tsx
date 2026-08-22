@@ -9,16 +9,16 @@ import { Plus, Trash2, Save, Edit2, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface HeroSlide {
   id: string;
-  title: string;
   title_ar: string;
-  subtitle: string;
+  title_en: string;
   subtitle_ar: string;
-  description: string;
-  description_ar: string;
+  subtitle_en: string;
+  description?: string;
+  description_ar?: string;
   image_url: string;
-  button_text: string;
-  button_text_ar: string;
-  button_link: string;
+  btn_ar?: string;
+  btn_en?: string;
+  link?: string;
   is_active: boolean;
   sort_order: number;
 }
@@ -31,16 +31,16 @@ export function AdminHeroSlides() {
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [form, setForm] = useState<Partial<HeroSlide>>({
-    title: '',
     title_ar: '',
-    subtitle: '',
+    title_en: '',
     subtitle_ar: '',
+    subtitle_en: '',
     description: '',
     description_ar: '',
     image_url: '',
-    button_text: '',
-    button_text_ar: '',
-    button_link: '/shop',
+    btn_ar: '',
+    btn_en: '',
+    link: '/shop',
     is_active: true,
     sort_order: 0,
   });
@@ -59,7 +59,7 @@ export function AdminHeroSlides() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title || !form.title_ar || !form.subtitle || !form.subtitle_ar) {
+    if (!form.title_ar || !form.title_en || !form.subtitle_ar || !form.subtitle_en) {
       toast.error(language === 'ar' ? 'يرجى ملء الحقول المطلوبة' : 'Please fill required fields');
       return;
     }
@@ -89,16 +89,16 @@ export function AdminHeroSlides() {
       }
       
       setForm({
-        title: '',
         title_ar: '',
-        subtitle: '',
+        title_en: '',
         subtitle_ar: '',
+        subtitle_en: '',
         description: '',
         description_ar: '',
         image_url: '',
-        button_text: '',
-        button_text_ar: '',
-        button_link: '/shop',
+        btn_ar: '',
+        btn_en: '',
+        link: '/shop',
         is_active: true,
         sort_order: 0,
       });
@@ -131,7 +131,6 @@ export function AdminHeroSlides() {
     
     [newSlides[index], newSlides[newIndex]] = [newSlides[newIndex], newSlides[index]];
     
-    // تحديث الـ sort_order
     const updates = newSlides.map((slide, idx) => ({
       id: slide.id,
       sort_order: idx,
@@ -155,7 +154,6 @@ export function AdminHeroSlides() {
         </div>
       </div>
 
-      {/* نموذج الإضافة/التعديل */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           {editingId ? <Edit2 className="h-5 w-5 text-[#B8956E]" /> : <Plus className="h-5 w-5 text-[#B8956E]" />}
@@ -171,8 +169,8 @@ export function AdminHeroSlides() {
             />
             <Input 
               label={language === 'ar' ? 'العنوان (English) *' : 'Title (English) *'} 
-              value={form.title || ''} 
-              onChange={(e) => setForm({...form, title: e.target.value})} 
+              value={form.title_en || ''} 
+              onChange={(e) => setForm({...form, title_en: e.target.value})} 
               required 
             />
           </div>
@@ -186,27 +184,35 @@ export function AdminHeroSlides() {
             />
             <Input 
               label={language === 'ar' ? 'العنوان الفرعي (English) *' : 'Subtitle (English) *'} 
-              value={form.subtitle || ''} 
-              onChange={(e) => setForm({...form, subtitle: e.target.value})} 
+              value={form.subtitle_en || ''} 
+              onChange={(e) => setForm({...form, subtitle_en: e.target.value})} 
               required 
             />
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <textarea
-              label={language === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}
-              value={form.description_ar || ''}
-              onChange={(e) => setForm({...form, description_ar: e.target.value})}
-              className="w-full h-24 p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-              placeholder={language === 'ar' ? 'اكتب الوصف هنا...' : 'Enter description...'}
-            />
-            <textarea
-              label={language === 'ar' ? 'الوصف (English)' : 'Description (English)'}
-              value={form.description || ''}
-              onChange={(e) => setForm({...form, description: e.target.value})}
-              className="w-full h-24 p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-              placeholder="Enter description..."
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                {language === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}
+              </label>
+              <textarea
+                value={form.description_ar || ''}
+                onChange={(e) => setForm({...form, description_ar: e.target.value})}
+                className="w-full h-24 p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                placeholder={language === 'ar' ? 'اكتب الوصف هنا...' : 'Enter description...'}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                {language === 'ar' ? 'الوصف (English)' : 'Description (English)'}
+              </label>
+              <textarea
+                value={form.description || ''}
+                onChange={(e) => setForm({...form, description: e.target.value})}
+                className="w-full h-24 p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                placeholder="Enter description..."
+              />
+            </div>
           </div>
           
           <ImageUploader 
@@ -220,20 +226,20 @@ export function AdminHeroSlides() {
           <div className="grid md:grid-cols-2 gap-4">
             <Input 
               label={language === 'ar' ? 'نص الزر (عربي)' : 'Button Text (Arabic)'} 
-              value={form.button_text_ar || ''} 
-              onChange={(e) => setForm({...form, button_text_ar: e.target.value})} 
+              value={form.btn_ar || ''} 
+              onChange={(e) => setForm({...form, btn_ar: e.target.value})} 
             />
             <Input 
               label={language === 'ar' ? 'نص الزر (English)' : 'Button Text (English)'} 
-              value={form.button_text || ''} 
-              onChange={(e) => setForm({...form, button_text: e.target.value})} 
+              value={form.btn_en || ''} 
+              onChange={(e) => setForm({...form, btn_en: e.target.value})} 
             />
           </div>
 
           <Input 
             label={language === 'ar' ? 'رابط الزر' : 'Button Link'} 
-            value={form.button_link || '/shop'} 
-            onChange={(e) => setForm({...form, button_link: e.target.value})} 
+            value={form.link || '/shop'} 
+            onChange={(e) => setForm({...form, link: e.target.value})} 
             placeholder="/shop"
           />
           
@@ -258,16 +264,16 @@ export function AdminHeroSlides() {
                 onClick={() => {
                   setEditingId(null);
                   setForm({
-                    title: '',
                     title_ar: '',
-                    subtitle: '',
+                    title_en: '',
                     subtitle_ar: '',
+                    subtitle_en: '',
                     description: '',
                     description_ar: '',
                     image_url: '',
-                    button_text: '',
-                    button_text_ar: '',
-                    button_link: '/shop',
+                    btn_ar: '',
+                    btn_en: '',
+                    link: '/shop',
                     is_active: true,
                     sort_order: 0,
                   });
@@ -281,7 +287,6 @@ export function AdminHeroSlides() {
         </form>
       </div>
 
-      {/* قائمة الشرائح الحالية */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-100 font-semibold text-gray-700">
           {language === 'ar' ? 'الشرائح الحالية' : 'Current Slides'} ({slides.length})
@@ -295,7 +300,7 @@ export function AdminHeroSlides() {
             {slides.map((slide, index) => (
               <div key={slide.id} className="p-4 flex items-start gap-4 hover:bg-gray-50 transition-colors">
                 {slide.image_url ? (
-                  <img src={slide.image_url} alt={slide.title} className="w-32 h-20 object-cover rounded-lg border border-gray-200" />
+                  <img src={slide.image_url} alt={slide.title_ar} className="w-32 h-20 object-cover rounded-lg border border-gray-200" />
                 ) : (
                   <div className="w-32 h-20 bg-gray-100 rounded-lg flex items-center justify-center">
                     <span className="text-xs text-gray-400">No Image</span>
@@ -303,8 +308,8 @@ export function AdminHeroSlides() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900">{slide.title_ar}</p>
-                  <p className="text-sm text-gray-500">{slide.title}</p>
-                  <p className="text-xs text-gray-400 mt-1">{slide.subtitle_ar} | {slide.subtitle}</p>
+                  <p className="text-sm text-gray-500">{slide.title_en}</p>
+                  <p className="text-xs text-gray-400 mt-1">{slide.subtitle_ar} | {slide.subtitle_en}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button 
