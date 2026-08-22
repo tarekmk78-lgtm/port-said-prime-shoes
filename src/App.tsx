@@ -34,7 +34,9 @@ const AdminReviews = lazy(() => import('./pages/admin/AdminReviews').then((m) =>
 const AdminCMS = lazy(() => import('./pages/admin/AdminCMS').then((m) => ({ default: m.AdminCMS })));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((m) => ({ default: m.AdminSettings })));
 const AdminHeroSlides = lazy(() => import('./pages/admin/AdminHeroSlides').then((m) => ({ default: m.AdminHeroSlides })));
-const AdminBrands = lazy(() => import('./pages/admin/AdminBrands').then((m: any) => ({ default: m.default || m.AdminBrands })));const queryClient = new QueryClient();
+const AdminBrands = lazy(() => import('./pages/admin/AdminBrands').then((m: any) => ({ default: m.default || m.AdminBrands })));
+
+const queryClient = new QueryClient();
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { session, loading, isAdmin } = useAuth();
