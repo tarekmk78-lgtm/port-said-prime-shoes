@@ -1,266 +1,251 @@
-import React, { useRef, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useI18n } from '../../lib/i18n';
-import { Upload, X, Loader2, ImagePlus, GripVertical } from 'lucide-react';
-import toast from 'react-hot-toast';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  horizontalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { supabase } from '../../lib/supabase';
+import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 
-// مكون الصورة القابلة للسحب
-function SortableImage({
-  url,
-  index,
-  onRemove,
-}: {
-  url: string;
-  index: number;
-  onRemove: (index: number) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: url });
+interface HeroSlide {
+  id: string;
+  title: string;
+  title_ar: string;
+  subtitle: string;
+  subtitle_ar: string;
+  description: string;
+  description_ar: string;
+  image_url: string;
+  button_text: string;
+  button_text_ar: string;
+  button_link: string;
+  text_position: string;
+  is_active: boolean;
+  sort_order: number;
+}
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : 0,
-    opacity: isDragging ? 0.5 : 1,
+// بيانات افتراضية لو الجدول فاضي
+const DEFAULT_SLIDES: HeroSlide[] = [
+  {
+    id: '1',
+    title: 'TIMELESS ELEGANCE',
+    title_ar: 'الفخامة تبدأ من خطوة',
+    subtitle: 'Summer Collection 2026',
+    subtitle_ar: 'مجموعة صيف 2026',
+    description: 'اكتشف مجموعة صيف 2026\nمصنوعة من أجود أنواع الجلد الطبيعي',
+    description_ar: 'اكتشف مجموعة صيف 2026\nمصنوعة من أجود أنواع الجلد الطبيعي',
+    image_url: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=1920&q=80',
+    button_text: 'Shop Now',
+    button_text_ar: 'تسوق الآن',
+    button_link: '/shop',
+    text_position: 'right',
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: '2',
+    title: 'PREMIUM QUALITY',
+    title_ar: 'جودة عالمية',
+    subtitle: 'Handcrafted Excellence',
+    subtitle_ar: 'صناعة يدوية متقنة',
+    description: 'أحذية مصنوعة بأيدي حرفيين\nبخامات طبيعية 100%',
+    description_ar: 'أحذية مصنوعة بأيدي حرفيين\nبخامات طبيعية 100%',
+    image_url: 'https://images.unsplash.com/photo-1449505278894-297fdb3edbc1?w=1920&q=80',
+    button_text: 'Explore',
+    button_text_ar: 'استكشف',
+    button_link: '/shop',
+    text_position: 'left',
+    is_active: true,
+    sort_order: 2,
+  },
+];
+
+export function HeroSection() {
+  const { language, isRTL } = useI18n();
+  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_SLIDES);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSlides() {
+      try {
+        const { data, error } = await supabase
+          .from('hero_slides')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (!error && data && data.length > 0) {
+          setSlides(data);
+        }
+      } catch (err) {
+        console.error('Error fetching hero slides:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSlides();
+  }, []);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [slides.length]);
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
 
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="relative w-20 h-20 rounded-md overflow-hidden border border-gray-200 group cursor-move"
-    >
-      <img
-        loading="lazy"
-        decoding="async"
-        src={url}
-        alt=""
-        className="w-full h-full object-cover pointer-events-none"
-      />
-      
-      {/* أيقونة السحب */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute top-0 left-0 right-0 bottom-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-      >
-        <GripVertical className="h-5 w-5 text-white" />
-      </div>
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
 
-      {/* زر الحذف */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(index);
-        }}
-        className="absolute top-1 right-1 p-0.5 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-      >
-        <X className="h-3 w-3" />
-      </button>
+  const current = slides[currentSlide] || DEFAULT_SLIDES[0];
+  const title = language === 'ar' ? current.title_ar : current.title;
+  const subtitle = language === 'ar' ? current.subtitle_ar : current.subtitle;
+  const description = language === 'ar' ? current.description_ar : current.description;
+  const buttonText = language === 'ar' ? current.button_text_ar : current.button_text;
 
-      {/* رقم الترتيب */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-0.5">
-        {index + 1}
-      </div>
-    </div>
-  );
-}
-
-// ✅ تمت إضافة 'brands' هنا
-interface ImageUploaderProps {
-  bucket: 'product-images' | 'category-images' | 'site-media' | 'brands';
-  value: string[];
-  onChange: (urls: string[]) => void;
-  multiple?: boolean;
-  label?: string;
-}
-
-export function ImageUploader({
-  bucket,
-  value,
-  onChange,
-  multiple = true,
-  label,
-}: ImageUploaderProps) {
-  const { language } = useI18n();
-  const [uploading, setUploading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // إعدادات السحب والإفلات
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    setUploading(true);
-
-    try {
-      const uploaded: string[] = [];
-
-      for (const file of Array.from(files)) {
-        const ext = file.name.split('.').pop();
-        const path = `${crypto.randomUUID()}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from(bucket)
-          .upload(path, file, { cacheControl: '3600', upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-        uploaded.push(data.publicUrl);
-      }
-
-      onChange(multiple ? [...value, ...uploaded] : uploaded);
-      toast.success(
-        language === 'ar' ? 'تم رفع الصورة بنجاح' : 'Image uploaded successfully'
-      );
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error(
-        error.message?.includes('not found')
-          ? language === 'ar'
-            ? 'لم يتم إنشاء حافظة التخزين بعد — تأكد من وجود bucket باسم brands'
-            : 'Storage bucket not found yet — make sure "brands" bucket exists'
-          : language === 'ar'
-          ? 'فشل رفع الصورة'
-          : 'Image upload failed'
-      );
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
+  // تحديد موضع النص بناءً على اللغة
+  const getTextPosition = () => {
+    if (current.text_position && current.text_position !== 'center') {
+      return current.text_position;
     }
-  }
+    return isRTL ? 'right' : 'left';
+  };
 
-  function removeAt(index: number) {
-    onChange(value.filter((_, i) => i !== index));
-  }
-
-  // معالجة نهاية السحب
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = value.findIndex((img) => img === active.id);
-      const newIndex = value.findIndex((img) => img === over.id);
-      const newOrder = arrayMove(value, oldIndex, newIndex);
-      onChange(newOrder);
-      
-      toast.success(
-        language === 'ar' ? 'تم تغيير ترتيب الصور' : 'Image order updated'
-      );
-    }
-  }
+  const textPosition = getTextPosition();
 
   return (
-    <div className="w-full">
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          {label}
-        </label>
-      )}
-
-      {/* عرض الصور مع السحب والإفلات */}
-      {value.length > 0 && (
-        <div className="mb-3">
-          <p className="text-xs text-gray-500 mb-2">
-            {language === 'ar'
-              ? 'اسحب الصور لتغيير ترتيبها (الصورة الأولى هي الصورة الرئيسية)'
-              : 'Drag images to reorder (first image is the main image)'}
-          </p>
-          
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={value}
-              strategy={horizontalListSortingStrategy}
-            >
-              <div className="flex flex-wrap gap-3">
-                {value.map((url, i) => (
-                  <SortableImage
-                    key={url}
-                    url={url}
-                    index={i}
-                    onRemove={removeAt}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+    <section className="relative">
+      {/* الشريط العلوي الشفاف */}
+      <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/60 to-transparent py-3">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="flex items-center justify-center gap-4 text-white/90 text-sm">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-amber-500" />
+              <span>شحن مجاني لجميع الطلبات | ضمان استرجاع 14 يوم</span>
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* زر إضافة صور جديدة */}
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="w-20 h-20 rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-[#B8956E] hover:text-[#B8956E] transition-colors disabled:opacity-50"
-        >
-          {uploading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <>
-              <ImagePlus className="h-5 w-5 mb-1" />
-              <span className="text-[10px]">
-                {language === 'ar' ? 'إضافة' : 'Add'}
-              </span>
-            </>
-          )}
-        </button>
       </div>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        multiple={multiple}
-        onChange={(e) => handleFiles(e.target.files)}
-        className="hidden"
-      />
+      {/* السلايدر */}
+      <div className="relative h-[600px] md:h-[700px] lg:h-[800px] overflow-hidden bg-black">
+        {slides.map((slide, index) => {
+          const isActive = index === currentSlide;
+          const slideTitle = language === 'ar' ? slide.title_ar : slide.title;
+          return (
+            <div
+              key={slide.id}
+              className={`absolute inset-0 transition-opacity duration-1000 ${
+                isActive ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              {/* الصورة */}
+              <div className="absolute inset-0">
+                <img
+                  src={slide.image_url}
+                  alt={slideTitle}
+                  className="w-full h-full object-cover"
+                />
+                {/* Overlay داكن */}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+              </div>
 
-      <p className="text-xs text-gray-400 flex items-center gap-1.5 mt-2">
-        <Upload className="h-3 w-3" />
-        {language === 'ar'
-          ? 'JPG, PNG حتى 5MB لكل صورة • اسحب لتغيير الترتيب'
-          : 'JPG, PNG up to 5MB each • Drag to reorder'}
-      </p>
-    </div>
+              {/* المحتوى */}
+              <div className="relative h-full max-w-7xl mx-auto px-4 md:px-6">
+                <div
+                  className={`flex items-center h-full ${
+                    textPosition === 'right'
+                      ? 'justify-end'
+                      : textPosition === 'left'
+                      ? 'justify-start'
+                      : 'justify-center'
+                  }`}
+                >
+                  <div
+                    className={`max-w-xl ${
+                      textPosition === 'right'
+                        ? 'text-right'
+                        : textPosition === 'left'
+                        ? 'text-left'
+                        : 'text-center'
+                    }`}
+                  >
+                    {/* Subtitle */}
+                    <p className="text-amber-500 text-sm md:text-base font-medium mb-3 tracking-wide italic">
+                      {language === 'ar' ? slide.subtitle_ar : slide.subtitle}
+                    </p>
+
+                    {/* Title */}
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                      {language === 'ar' ? slide.title_ar : slide.title}
+                    </h1>
+
+                    {/* Description */}
+                    <p className="text-gray-200 text-base md:text-lg mb-8 leading-relaxed whitespace-pre-line">
+                      {language === 'ar' ? slide.description_ar : slide.description}
+                    </p>
+
+                    {/* Buttons */}
+                    <div className="flex flex-wrap gap-4">
+                      <Link
+                        to={slide.button_link || '/shop'}
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors shadow-lg"
+                      >
+                        <ShoppingBag className="w-5 h-5" />
+                        {language === 'ar' ? slide.button_text_ar : slide.button_text}
+                      </Link>
+                      <Link
+                        to="/shop"
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white border border-white/30 rounded-lg font-semibold hover:bg-white/20 transition-colors"
+                      >
+                        {language === 'ar' ? 'استكشف المجموعة' : 'Explore Collection'}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* أزرار التنقل */}
+        {slides.length > 1 && (
+          <>
+            <button
+              onClick={prevSlide}
+              className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all"
+            >
+              {isRTL ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all"
+            >
+              {isRTL ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
+            </button>
+
+            {/* النقاط */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`h-2.5 rounded-full transition-all ${
+                    index === currentSlide
+                      ? 'bg-amber-500 w-8'
+                      : 'bg-white/40 hover:bg-white/60 w-2.5'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
