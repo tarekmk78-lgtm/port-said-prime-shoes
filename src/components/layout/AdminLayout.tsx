@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Award,
 } from 'lucide-react';
 
 export function AdminLayout() {
@@ -28,6 +29,7 @@ export function AdminLayout() {
     { path: '/admin', icon: LayoutDashboard, label: t('admin.dashboard') },
     { path: '/admin/products', icon: Package, label: t('admin.products') },
     { path: '/admin/categories', icon: FolderOpen, label: t('admin.categories') },
+    { path: '/admin/brands', icon: Award, label: language === 'ar' ? 'الماركات' : 'Brands' },
     { path: '/admin/orders', icon: ShoppingCart, label: t('admin.orders') },
     { path: '/admin/customers', icon: Users, label: t('admin.customers') },
     { path: '/admin/reviews', icon: Star, label: language === 'ar' ? 'التقييمات' : 'Reviews' },
