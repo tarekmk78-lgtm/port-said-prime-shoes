@@ -6,7 +6,7 @@ import { HeroSection } from '../components/home/HeroSection';
 import { Category, Banner, Product } from '../types';
 import { ArrowRight, Truck, ShieldCheck, Award, Sparkles, CreditCard, Factory, Gem, Heart } from 'lucide-react';
 
-// لوجوهات الماركات (روابط SVG/PNG من مصادر موثوقة)
+// لوجوهات الماركات
 const BRANDS = [
   {
     id: 'clarks',
@@ -86,7 +86,7 @@ export function HomePage() {
           .select('*')
           .eq('is_active', true)
           .order('created_at', { ascending: false })
-          .limit(6);
+          .limit(10);
 
         setCategories(categoriesData || []);
         setBanners(bannersData || []);
@@ -132,7 +132,7 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* 3. تسوق حسب الفئة */}
+      {/* 3. تسوق حسب الفئة (6 فئات في سطر واحد) */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-8 md:mb-12">
@@ -219,7 +219,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 4. وصل حديثاً (6 منتجات في سطر واحد) */}
+      {/* 4. وصل حديثاً (10 منتجات - صفين × 5 أعمدة) */}
       <section className="py-12 md:py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-8 md:mb-12">
@@ -238,13 +238,13 @@ export function HomePage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-              {[...Array(6)].map((_, i) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+              {[...Array(10)].map((_, i) => (
                 <div key={i} className="animate-pulse bg-gray-200 rounded-xl h-64 md:h-72"></div>
               ))}
             </div>
           ) : newArrivals.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {newArrivals.map((product) => {
                 const productName = language === 'ar' ? product.name_ar : product.name;
                 const productPrice = product.price || 0;
@@ -330,7 +330,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 5. تسوق حسب الماركة */}
+      {/* 5. تسوق حسب الماركة (باللوجوهات الأصلية) */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-8 md:mb-12">
@@ -359,10 +359,9 @@ export function HomePage() {
                   <img
                     src={brand.logo}
                     alt={brand.name}
-                    className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110 filter grayscale group-hover:grayscale-0"
+                    className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110"
                     loading="lazy"
                     onError={(e) => {
-                      // Fallback إذا اللوجو مش متاح
                       (e.target as HTMLImageElement).style.display = 'none';
                       (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                     }}
