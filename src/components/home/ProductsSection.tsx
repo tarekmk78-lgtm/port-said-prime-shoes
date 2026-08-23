@@ -1,6 +1,4 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useI18n } from '../../lib/i18n';
 import { Product } from '../../types';
 import { ProductCard } from '../product/ProductCard';

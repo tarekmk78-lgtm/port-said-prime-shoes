@@ -88,10 +88,30 @@ export function ProductPage() {
         const { data: variantsData } = await supabase.from('product_variants').select('*').eq('product_id', productData.id);
         setVariants(variantsData || []);
 
-        // ✅ لازم alias صريح (user:) عشان الكود تحت بيدور على review.user
-        // مش review.profiles، وإلا اسم وصورة صاحب التقييم مش هيظهروا أبداً
-        const { data: reviewsData } = await supabase.from('reviews').select('*, user:profiles(full_name, avatar_url)').eq('product_id', productData.id).eq('is_approved', true).order('created_at', { ascending: false });
-        setReviews(reviewsData || []);
+        // ✅ مفيش foreign key متعرّف بين reviews و profiles في قاعدة البيانات
+        // (أكدها خطأ PGRST200)، فمينفعش نستخدم embed/join خالص. بنجيب
+        // التقييمات عادي، وبعدين بروفايلات أصحابها في طلب منفصل، وندمجهم يدوي.
+        const { data: reviewsData } = await supabase
+          .from('reviews')
+          .select('*')
+          .eq('product_id', productData.id)
+          .eq('is_approved', true)
+          .order('created_at', { ascending: false });
+
+        if (reviewsData && reviewsData.length > 0) {
+          const userIds = [...new Set(reviewsData.map((r: any) => r.user_id).filter(Boolean))];
+          let profilesById: Record<string, any> = {};
+          if (userIds.length > 0) {
+            const { data: profilesData } = await supabase
+              .from('profiles')
+              .select('id, full_name, avatar_url')
+              .in('id', userIds);
+            profilesById = Object.fromEntries((profilesData || []).map((p: any) => [p.id, p]));
+          }
+          setReviews(reviewsData.map((r: any) => ({ ...r, user: profilesById[r.user_id] || null })));
+        } else {
+          setReviews([]);
+        }
 
         if (productData.category_id) {
           const { data: relatedData } = await supabase.from('products').select('*, categories(name, name_ar, slug)').eq('category_id', productData.category_id).eq('is_active', true).neq('id', productData.id).limit(4);
@@ -122,26 +142,40 @@ export function ProductPage() {
 
   const availableColors = variants.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
+  // ✅ منتجات كتير مفيهاش مقاسات/ألوان مسجلة (variants) خالص — دي مش حالة استثنائية،
+  // فمينفعش نمنع الطلب/الإضافة للسلة في الحالة دي، لازم نعتبرها منتج بسيط ونعتمد
+  // على المخزون العام بتاعه (product.stock_quantity) بدل ما نستنى variant اتحدد
+  const hasVariants = variants.length > 0;
 
   const handleAddToCart = async () => {
-    if (!product || !selectedVariant) {
-      toast.error(language === 'ar' ? 'يرجى اختيار المقاس واللون' : 'Please select size and color');
-      return;
+    if (!product) return;
+    if (hasVariants) {
+      if (!selectedVariant) {
+        toast.error(language === 'ar' ? 'يرجى اختيار المقاس واللون' : 'Please select size and color');
+        return;
+      }
+      if (selectedVariant.stock_quantity <= 0) {
+        toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
+        return;
+      }
+      await addItem(product, selectedVariant, quantity);
+    } else {
+      if (product.stock_quantity <= 0) {
+        toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
+        return;
+      }
+      await addItem(product, null, quantity);
     }
-    if (selectedVariant.stock_quantity <= 0) {
-      toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
-      return;
-    }
-    await addItem(product, selectedVariant, quantity);
     toast.success(language === 'ar' ? 'تمت الإضافة للسلة' : 'Added to cart');
   };
 
   const handleWhatsAppOrder = () => {
-    if (!selectedVariant) {
+    if (!product) return;
+    if (hasVariants && !selectedVariant) {
       toast.error(language === 'ar' ? 'يرجى اختيار المقاس أولاً' : 'Please select a size first');
       return;
     }
-    navigate('/checkout/whatsapp', { state: { product, variant: selectedVariant } });
+    navigate('/checkout/whatsapp', { state: { product, variant: hasVariants ? selectedVariant : null } });
   };
 
   if (loading) return <div className="min-h-screen pb-16"><div className="max-w-7xl mx-auto px-4 md:px-6 py-8"><ProductGridSkeleton count={1} /></div></div>;
@@ -332,10 +366,15 @@ export function ProductPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col gap-3 mb-8">
-              <Button size="lg" onClick={handleAddToCart} disabled={!selectedVariant || selectedVariant.stock_quantity === 0} className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl">
+              <Button
+                size="lg"
+                onClick={handleAddToCart}
+                disabled={hasVariants ? (!selectedVariant || selectedVariant.stock_quantity === 0) : product.stock_quantity === 0}
+                className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl"
+              >
                 {t('product.addToCart')}
               </Button>
-              <Button size="lg" onClick={handleWhatsAppOrder} disabled={!selectedVariant} className="w-full h-14 bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all rounded-xl flex items-center justify-center gap-2">
+              <Button size="lg" onClick={handleWhatsAppOrder} disabled={hasVariants && !selectedVariant} className="w-full h-14 bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all rounded-xl flex items-center justify-center gap-2">
                 <MessageCircle className="h-5 w-5" />
                 {language === 'ar' ? 'اطلب الآن عبر الواتساب' : 'Order Now via WhatsApp'}
               </Button>

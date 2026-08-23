@@ -104,14 +104,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const addItem = async (product: Product, variant: ProductVariant | null, quantity = 1) => {
-    // ✅ 1. التحقق من اختيار المقاس/اللون قبل الإضافة
-    if (!variant) {
-      toast.error('يرجى اختيار المقاس واللون أولاً');
-      return;
-    }
+    // ✅ منتجات كتير مفيهاش مقاسات/ألوان (variants) خالص، فمينفعش نمنع
+    // الإضافة للسلة في الحالة دي. الشرط القديم كان بيرفض أي منتج من غير
+    // variant حتى لو الصفحة نفسها سمحت بالإضافة - وده كان بيمنع "إضافة للسلة"
+    // نهائياً على أي منتج مفيهوش variants.
 
     const existingIndex = items.findIndex(
-      (item) => item.product_id === product.id && item.variant_id === variant.id
+      (item) => item.product_id === product.id && item.variant_id === (variant?.id ?? undefined)
     );
 
     if (existingIndex > -1) {
@@ -121,31 +120,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // ✅ 2. حساب السعر الصحيح بما فيه تعديل السعر للمقاس
-    const priceAdjustment = (variant as ProductVariant & { price_adjustment?: number }).price_adjustment ?? 0;
+    // ✅ حساب السعر الصحيح بما فيه تعديل السعر للمقاس (لو موجود variant)
+    const priceAdjustment = variant ? ((variant as ProductVariant & { price_adjustment?: number }).price_adjustment ?? 0) : 0;
     const finalPrice = product.price + priceAdjustment;
 
     const newItem: CartItem = {
       id: crypto.randomUUID(),
       product_id: product.id,
       product,
-      variant_id: variant.id,
-      variant,
+      variant_id: variant?.id,
+      variant: variant ?? undefined,
       quantity,
       price: finalPrice,
     };
 
     if (user) {
       try {
+        const insertPayload: Record<string, any> = {
+          user_id: user.id,
+          product_id: product.id,
+          quantity,
+          price: finalPrice,
+        };
+        // ✅ منبعتش variant_id خالص لو المنتج مفيهوش variant، بدل ما نبعت null
+        // ممكن يعمل مشكلة لو العمود عنده NOT NULL/foreign key constraint
+        if (variant?.id) {
+          insertPayload.variant_id = variant.id;
+        }
+
         const { data, error } = await supabase
           .from('cart_items')
-          .insert({
-            user_id: user.id,
-            product_id: product.id,
-            variant_id: variant.id,
-            quantity,
-            price: finalPrice,
-          })
+          .insert(insertPayload)
           .select()
           .single();
 
