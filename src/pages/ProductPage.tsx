@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useCart } from '../lib/cart-context';
 import { useWishlist } from '../lib/wishlist-context';
-import { useSettings } from '../lib/settings-context'; // ✅ تمت الإضافة لجلب رقم الواتساب
+import { useSettings } from '../lib/settings-context';
 import { Product, ProductVariant, Review } from '../types';
 import { supabase } from '../lib/supabase';
 import { formatPrice, getDiscountPercentage } from '../lib/utils';
@@ -24,7 +24,7 @@ export function ProductPage() {
   const { language, t } = useI18n();
   const { addItem } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const { settings } = useSettings(); // ✅ جلب الإعدادات
+  const { settings } = useSettings();
   
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
@@ -89,26 +89,19 @@ export function ProductPage() {
         const { data: variantsData } = await supabase.from('product_variants').select('*').eq('product_id', productData.id);
         setVariants(variantsData || []);
 
-        const { data: reviewsData } = await supabase
+        // ✅ جلب التقييمات مع بيانات المستخدم (العلاقة موجودة في قاعدة البيانات)
+        const { data: reviewsData, error: reviewsError } = await supabase
           .from('reviews')
-          .select('*')
+          .select('*, profiles(full_name, avatar_url)')
           .eq('product_id', productData.id)
           .eq('is_approved', true)
           .order('created_at', { ascending: false });
 
-        if (reviewsData && reviewsData.length > 0) {
-          const userIds = [...new Set(reviewsData.map((r: any) => r.user_id).filter(Boolean))];
-          let profilesById: Record<string, any> = {};
-          if (userIds.length > 0) {
-            const { data: profilesData } = await supabase
-              .from('profiles')
-              .select('id, full_name, avatar_url')
-              .in('id', userIds);
-            profilesById = Object.fromEntries((profilesData || []).map((p: any) => [p.id, p]));
-          }
-          setReviews(reviewsData.map((r: any) => ({ ...r, user: profilesById[r.user_id] || null })));
-        } else {
+        if (reviewsError) {
+          console.error('Error fetching reviews:', reviewsError);
           setReviews([]);
+        } else {
+          setReviews(reviewsData || []);
         }
 
         if (productData.category_id) {
@@ -142,7 +135,6 @@ export function ProductPage() {
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
   const hasVariants = variants.length > 0;
 
-  // ✅ دالة الإضافة للسلة المعدلة لتدعم المنتجات بدون مقاسات
   const handleAddToCart = async () => {
     if (!product) return;
     
@@ -161,7 +153,6 @@ export function ProductPage() {
         toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
         return;
       }
-      // إنشاء متغير افتراضي للمنتجات التي لا تحتوي على مقاسات
       const defaultVariant = {
         id: `${product.id}-default`,
         product_id: product.id,
@@ -170,18 +161,13 @@ export function ProductPage() {
         color_code: '#000000',
         stock_quantity: product.stock_quantity,
         price_adjustment: 0,
-        sku: product.sku || 'DEFAULT',
-        price: product.price,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        sku: product.sku || 'DEFAULT'
       } as unknown as ProductVariant;
-
+      
       await addItem(product, defaultVariant, quantity);
     }
   };
 
-  // ✅ دالة الواتساب المباشرة والمعدلة
   const handleWhatsAppOrder = () => {
     if (!product) return;
     
@@ -190,23 +176,22 @@ export function ProductPage() {
       return;
     }
 
-    // تجهيز بيانات المتغير (افتراضي إذا لم يكن هناك مقاسات)
     const variantData = hasVariants && selectedVariant
       ? selectedVariant
-      : { size: 'قياس موحد', color: 'قياسي', price_adjustment: 0 };
+      : { size: 'قياس موحد', color: 'قياسي' };
 
-    // جلب الرقم من الإعدادات أو استخدام رقم افتراضي (قم بتغيير الرقم الافتراضي برقمك)
     const rawPhone = settings?.whatsapp_number || '201000000000'; 
     const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
     
     const productName = language === 'ar' ? product.name_ar : product.name;
     const variantDetails = `${variantData.size} / ${variantData.color}`;
-    const finalPrice = product.price + ((variantData as any)?.price_adjustment || 0);
+    const priceAdjustment = hasVariants && selectedVariant?.price ? (selectedVariant.price - product.price) : 0;
+    const finalPrice = product.price + priceAdjustment;
 
     const message = `مرحباً، أريد طلب هذا المنتج:\n` +
                     `📦 *المنتج:* ${productName}\n` +
                     `📏 *المقاس/اللون:* ${variantDetails}\n` +
-                    `💰 *السعر:* ${finalPrice} ج.م\n` +
+                    ` *السعر:* ${finalPrice} ج.م\n` +
                     `🔢 *الكمية:* ${quantity}`;
 
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
@@ -389,7 +374,7 @@ export function ProductPage() {
               </div>
             </div>
 
-            {/* Action Buttons - تم التعديل لضمان عمل الزر دائماً */}
+            {/* Action Buttons */}
             <div className="flex flex-col gap-3 mb-8">
               <Button
                 size="lg"
@@ -479,25 +464,30 @@ export function ProductPage() {
                 {product && <ReviewForm productId={product.id} />}
                 {reviews.length > 0 ? (
                   <div className="space-y-6 mt-8">
-                    {reviews.map((review) => (
-                      <div key={review.id} className="bg-gray-50 rounded-2xl p-6">
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white font-bold text-lg">
-                            {(review.user?.full_name || 'U')[0].toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-900">{review.user?.full_name || 'User'}</p>
-                            <div className="flex mt-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star key={star} className={`h-4 w-4 ${star <= review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}`} />
-                              ))}
+                    {reviews.map((review) => {
+                      const reviewProfile = (review as Review & { profiles?: { full_name?: string | null } }).profiles;
+                      const reviewerName = reviewProfile?.full_name || 'User';
+
+                      return (
+                        <div key={review.id} className="bg-gray-50 rounded-2xl p-6">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white font-bold text-lg">
+                              {reviewerName.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900">{reviewerName}</p>
+                              <div className="flex mt-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star key={star} className={`h-4 w-4 ${star <= review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}`} />
+                                ))}
+                              </div>
                             </div>
                           </div>
+                          <h4 className="font-bold text-gray-900 mb-2">{review.title}</h4>
+                          <p className="text-gray-600 leading-relaxed">{review.comment}</p>
                         </div>
-                        <h4 className="font-bold text-gray-900 mb-2">{review.title}</h4>
-                        <p className="text-gray-600 leading-relaxed">{review.comment}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-gray-500 text-center py-12 bg-gray-50 rounded-2xl">
