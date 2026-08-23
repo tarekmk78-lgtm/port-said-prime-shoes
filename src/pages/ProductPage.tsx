@@ -139,52 +139,39 @@ export function ProductPage() {
   const availableColors = variants.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
 
-  // ✅ دالة الإضافة للسلة - بسيطة ومضمونة
+  // ✅ دالة إضافة للسلة - بسيطة ومضمونة
   const handleAddToCart = async () => {
     if (!product) return;
     
-    // التحقق من المخزون
-    const currentStock = selectedVariant?.stock_quantity ?? product.stock_quantity;
-    if (currentStock <= 0) {
+    const stock = selectedVariant?.stock_quantity ?? product.stock_quantity;
+    if (stock <= 0) {
       toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
       return;
     }
 
-    // نمرر selectedVariant (قد تكون null، وaddItem سيتعامل معها)
     await addItem(product, selectedVariant, quantity);
   };
 
-  // ✅ دالة الواتساب - بسيطة ومضمونة
+  // ✅ دالة واتساب - بسيطة ومضمونة
   const handleWhatsAppOrder = () => {
     if (!product) return;
 
-    const phoneNumber = '201007526286';
+    const phone = '201007526286';
     
-    const variantInfo = selectedVariant || {
-      size: 'قياس موحد',
-      color: selectedColor || 'قياسي',
-      price_adjustment: 0
-    };
+    const name = language === 'ar' ? product.name_ar : product.name;
+    const size = selectedVariant?.size || 'قياس موحد';
+    const color = selectedVariant?.color || (selectedColor || 'قياسي');
+    const price = product.price;
 
-    const productName = language === 'ar' ? product.name_ar : product.name;
-    const priceAdjustment = 'price_adjustment' in variantInfo
-      ? variantInfo.price_adjustment
-      : 0;
-    const finalPrice = product.price + (priceAdjustment || 0);
-    const sizeInfo = variantInfo.size || 'قياس موحد';
-    const colorInfo = variantInfo.color || 'قياسي';
-
-    const message = `*طلب جديد من الموقع*\n\n` +
-                    `📦 *المنتج:* ${productName}\n` +
-                    `📏 *المقاس:* ${sizeInfo}\n` +
-                    `🎨 *اللون:* ${colorInfo}\n` +
-                    `💰 *السعر:* ${finalPrice} ج.م\n` +
-                    `🔢 *الكمية:* ${quantity}\n\n` +
-                    `شكراً!`;
-
-    const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    const msg = `*طلب جديد من الموقع*\n\n` +
+                `📦 *المنتج:* ${name}\n` +
+                `📏 *المقاس:* ${size}\n` +
+                ` *اللون:* ${color}\n` +
+                `💰 *السعر:* ${price} ج.م\n` +
+                `🔢 *الكمية:* ${quantity}\n\n` +
+                `شكراً!`;
     
-    window.open(whatsappURL, '_blank');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   if (loading) return <div className="min-h-screen pb-16"><div className="max-w-7xl mx-auto px-4 md:px-6 py-8"><ProductGridSkeleton count={1} /></div></div>;
@@ -317,7 +304,7 @@ export function ProductPage() {
                       style={{ backgroundColor: variant.color_code || variant.color.toLowerCase() }}
                       title={variant.color}
                     >
-                      {selectedColor === variant.color && <Check className="w-5 h-5 text-white drop-shadow-md" />}
+                      {selectedColor === variant.color && <Check className="w-5 w-5 text-white drop-shadow-md" />}
                     </button>
                   ))}
                 </div>
@@ -367,7 +354,7 @@ export function ProductPage() {
               </div>
             </div>
 
-            {/* Action Buttons - ✅ بسيطة ومضمونة */}
+            {/* Action Buttons */}
             <div className="flex flex-col gap-3 mb-8">
               <Button
                 size="lg"

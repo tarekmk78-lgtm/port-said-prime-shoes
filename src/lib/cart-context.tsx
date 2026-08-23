@@ -42,10 +42,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce((sum, item) => {
-    const price = item.variant?.price_adjustment
-      ? item.price + item.variant.price_adjustment
-      : item.price;
-    return sum + price * item.quantity;
+    return sum + item.price * item.quantity;
   }, 0);
   const discount = couponDiscount;
   const total = subtotal - discount;
@@ -103,78 +100,68 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ✅ دالة addItem المعدلة - تقبل null وتنشئ variant افتراضي تلقائياً
   const addItem = async (product: Product, variant: ProductVariant | null, quantity = 1) => {
-    // إذا لم يتم تمرير variant، ننشئ واحد افتراضي
-    let finalVariant = variant;
-    if (!finalVariant) {
-      finalVariant = {
-        id: `${product.id}-default`,
-        product_id: product.id,
-        size: 'قياس موحد',
-        color: 'قياسي',
-        color_code: '#000000',
-        stock_quantity: product.stock_quantity,
-        price: product.price,
-        price_adjustment: 0,
-        sku: product.sku || 'DEFAULT',
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as ProductVariant;
-    }
+    try {
+      // إنشاء معرف فريد للعنصر
+      const cartItemId = variant ? `${product.id}-${variant.id}` : `${product.id}-default`;
+      
+      // حساب السعر النهائي
+      const finalPrice = variant 
+        ? product.price + ((variant as ProductVariant & { price_adjustment?: number }).price_adjustment || 0)
+        : product.price;
 
-    const existingIndex = items.findIndex(
-      (item) => item.product_id === product.id && item.variant_id === finalVariant.id
-    );
+      // البحث هل العنصر موجود من قبل
+      const existingIndex = items.findIndex(item => item.id === cartItemId);
 
-    if (existingIndex > -1) {
-      const newQuantity = items[existingIndex].quantity + quantity;
-      await updateQuantity(items[existingIndex].id, newQuantity);
-      return;
-    }
-
-    const priceAdjustment = (finalVariant as ProductVariant & {
-      price_adjustment?: number;
-    }).price_adjustment || 0;
-    const finalPrice = product.price + priceAdjustment;
-
-    const newItem: CartItem = {
-      id: crypto.randomUUID(),
-      product_id: product.id,
-      product,
-      variant_id: finalVariant.id,
-      variant: finalVariant,
-      quantity,
-      price: finalPrice,
-    };
-
-    if (user) {
-      try {
-        const { data, error } = await supabase
-          .from('cart_items')
-          .insert({
-            user_id: user.id,
-            product_id: product.id,
-            variant_id: finalVariant.id,
-            quantity,
-            price: finalPrice,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (data) newItem.id = data.id;
-        
-      } catch (error) {
-        console.error('Error adding to cart:', error);
-        toast.error('حدث خطأ أثناء الحفظ في قاعدة البيانات');
+      if (existingIndex > -1) {
+        // لو موجود، زود الكمية
+        const newQuantity = items[existingIndex].quantity + quantity;
+        await updateQuantity(items[existingIndex].id, newQuantity);
+        toast.success('تم تحديث الكمية في السلة');
         return;
       }
-    }
 
-    setItems([...items, newItem]);
-    toast.success('تمت إضافة المنتج للسلة بنجاح');
+      // إنشاء عنصر جديد
+      const newItem: CartItem = {
+        id: cartItemId,
+        product_id: product.id,
+        product,
+        variant_id: variant?.id,
+        variant,
+        quantity,
+        price: finalPrice,
+      };
+
+      // حفظ في Supabase لو المستخدم مسجل دخول
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('cart_items')
+            .insert({
+              user_id: user.id,
+              product_id: product.id,
+              variant_id: variant?.id || null,
+              quantity,
+              price: finalPrice,
+            })
+            .select()
+            .single();
+
+          if (!error && data) {
+            newItem.id = data.id;
+          }
+        } catch (err) {
+          console.error('Supabase save error:', err);
+        }
+      }
+
+      // تحديث الـ state المحلي
+      setItems([...items, newItem]);
+      toast.success('تمت إضافة المنتج للسلة بنجاح');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('حدث خطأ أثناء الإضافة للسلة');
+    }
   };
 
   const removeItem = async (itemId: string) => {
