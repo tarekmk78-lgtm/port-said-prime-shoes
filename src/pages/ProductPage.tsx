@@ -88,7 +88,9 @@ export function ProductPage() {
         const { data: variantsData } = await supabase.from('product_variants').select('*').eq('product_id', productData.id);
         setVariants(variantsData || []);
 
-        const { data: reviewsData } = await supabase.from('reviews').select('*, profiles(full_name, avatar_url)').eq('product_id', productData.id).eq('is_approved', true).order('created_at', { ascending: false });
+        // ✅ لازم alias صريح (user:) عشان الكود تحت بيدور على review.user
+        // مش review.profiles، وإلا اسم وصورة صاحب التقييم مش هيظهروا أبداً
+        const { data: reviewsData } = await supabase.from('reviews').select('*, user:profiles(full_name, avatar_url)').eq('product_id', productData.id).eq('is_approved', true).order('created_at', { ascending: false });
         setReviews(reviewsData || []);
 
         if (productData.category_id) {
@@ -154,7 +156,9 @@ export function ProductPage() {
 
   const discount = product.compare_at_price ? getDiscountPercentage(product.price, product.compare_at_price) : 0;
   const name = language === 'ar' ? product.name_ar : product.name;
-  const description = language === 'ar' ? product.description_ar : product.description;
+  // ✅ فولباك فاضي عشان لو المنتج مفيهوش وصف باللغة دي، الصفحة متكسرش
+  // (كانت description.split(...) بتعمل crash لو القيمة null)
+  const description = (language === 'ar' ? product.description_ar : product.description) || '';
 
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-16">
@@ -377,14 +381,18 @@ export function ProductPage() {
           <div className="min-h-[200px]">
             {activeTab === 'description' && (
               <div className="prose max-w-none text-gray-700 leading-relaxed">
-                <div className="space-y-4">
-                  {description.split(/[*•]\s+/).filter((point) => point.trim()).map((point, index) => (
-                    <div key={index} className="flex items-start gap-4">
-                      <span className="text-amber-500 mt-1.5 flex-shrink-0 text-xl">•</span>
-                      <p className="text-gray-700">{point.trim()}</p>
-                    </div>
-                  ))}
-                </div>
+                {description ? (
+                  <div className="space-y-4">
+                    {description.split(/[*•]\s+/).filter((point) => point.trim()).map((point, index) => (
+                      <div key={index} className="flex items-start gap-4">
+                        <span className="text-amber-500 mt-1.5 flex-shrink-0 text-xl">•</span>
+                        <p className="text-gray-700">{point.trim()}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">{language === 'ar' ? 'لا يوجد وصف لهذا المنتج بعد' : 'No description available for this product yet'}</p>
+                )}
               </div>
             )}
             {activeTab === 'reviews' && (

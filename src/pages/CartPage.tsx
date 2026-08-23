@@ -149,7 +149,8 @@ export function CartPage() {
                         <div className="flex items-center border border-gray-200 rounded-md">
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100"
+                            disabled={item.quantity <= 1}
+                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Minus className="h-4 w-4" />
                           </button>

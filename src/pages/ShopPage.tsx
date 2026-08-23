@@ -11,17 +11,12 @@ import { useSEO } from '../lib/seo';
 
 const PRODUCTS_PER_PAGE = 12;
 
-// قائمة الماركات لعرض الأسماء بشكل صحيح
-const BRANDS = [
-  { id: 'clarks', name: 'Clarks', name_ar: 'كلاركس' },
-  { id: 'ecco', name: 'ECCO', name_ar: 'إيكو' },
-  { id: 'timberland', name: 'Timberland', name_ar: 'تيمبرلاند' },
-  { id: 'cat', name: 'CAT', name_ar: 'كاتربيلر' },
-  { id: 'skechers', name: 'Skechers', name_ar: 'سكيتشرز' },
-  { id: 'loropiana', name: 'Loro Piana', name_ar: 'لورو بيانا' },
-  { id: 'calvinklein', name: 'Calvin Klein', name_ar: 'كالفين كلاين' },
-  { id: 'hushpuppies', name: 'Hush Puppies', name_ar: 'هاتش بابس' },
-];
+interface Brand {
+  id: string;
+  slug: string;
+  name: string;
+  name_ar: string;
+}
 
 export function ShopPage() {
   const { language } = useI18n();
@@ -36,16 +31,32 @@ export function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  // ✅ الماركات بقت بتتجاب ديناميك من قاعدة البيانات بدل ليستة ثابتة،
+  // عشان أي ماركة جديدة تتضاف من الأدمن تظهر هنا فوراً
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [page, setPage] = useState(1);
   
   const categoryFilter = searchParams.get('category') || '';
-  const brandFilter = searchParams.get('brand') || ''; // ✅ إضافة فلتر الماركة
+  const brandFilter = searchParams.get('brand') || '';
   const filterType = searchParams.get('filter') || '';
   const sortBy = searchParams.get('sort') || 'newest';
   const priceMin = searchParams.get('priceMin') || '';
   const priceMax = searchParams.get('priceMax') || '';
+
+  // ✅ جلب الماركات مرة واحدة عند تحميل الصفحة (نفس منطق الهيدر)
+  useEffect(() => {
+    async function fetchBrands() {
+      const { data } = await supabase
+        .from('brands')
+        .select('id, name, name_ar, slug')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      if (data) setBrands(data);
+    }
+    fetchBrands();
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -53,10 +64,11 @@ export function ShopPage() {
       try {
         let query = supabase
           .from('products')
-          .select('*, categories()')
+          // ✅ لازم alias صريح (category:) عشان ProductCard بيدور على product.category
+          // مش product.categories، وكمان لازم تحديد الأعمدة المطلوبة بدل قوسين فاضيين
+          .select('*, category:categories(name, name_ar, slug)')
           .eq('is_active', true);
 
-        // ✅ فلتر الماركة
         if (brandFilter) {
           query = query.eq('brand', brandFilter);
         }
@@ -114,7 +126,7 @@ export function ShopPage() {
       }
     }
     fetchData();
-  }, [categoryFilter, brandFilter, filterType, sortBy, priceMin, priceMax]); // ✅ إضافة brandFilter هنا
+  }, [categoryFilter, brandFilter, filterType, sortBy, priceMin, priceMax]);
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery) return products;
@@ -143,6 +155,9 @@ export function ShopPage() {
       searchParams.delete('search');
     }
     setSearchParams(searchParams);
+    // ✅ لازم نرجع لأول صفحة عند أي بحث جديد، وإلا ممكن تفضل واقف على
+    // صفحة رقمها أكبر من عدد صفحات النتائج الجديدة وتشوف "لا توجد منتجات" غلط
+    setPage(1);
   };
 
   const updateFilter = (key: string, value: string) => {
@@ -163,10 +178,9 @@ export function ShopPage() {
 
   const hasActiveFilters = categoryFilter || brandFilter || filterType || priceMin || priceMax;
 
-  // ✅ تحديث العنوان الفرعي ليشمل الماركة
   const getSubtitle = () => {
     if (brandFilter) {
-      const brand = BRANDS.find(b => b.id === brandFilter);
+      const brand = brands.find(b => b.slug === brandFilter);
       const brandName = language === 'ar' ? (brand?.name_ar || brandFilter) : (brand?.name || brandFilter);
       return language === 'ar' ? `جميع منتجات ماركة ${brandName}` : `All ${brandName} Products`;
     }
@@ -192,7 +206,7 @@ export function ShopPage() {
             {language === 'ar' ? 'كل المجموعات' : 'Full collection'}
           </span>
           <h1 className="font-display text-3xl md:text-4xl font-semibold text-white mt-3">
-            {brandFilter ? (BRANDS.find(b => b.id === brandFilter)?.name || 'Brand') : (language === 'ar' ? 'المتجر' : 'Shop')}
+            {brandFilter ? (brands.find(b => b.slug === brandFilter)?.name || 'Brand') : (language === 'ar' ? 'المتجر' : 'Shop')}
           </h1>
           <p className="text-white/55 mt-3">{getSubtitle()}</p>
         </div>
@@ -258,8 +272,8 @@ export function ShopPage() {
                   className="w-full h-10 px-3 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
                 >
                   <option value="">{language === 'ar' ? 'جميع الماركات' : 'All Brands'}</option>
-                  {BRANDS.map((b) => (
-                    <option key={b.id} value={b.id}>
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.slug}>
                       {language === 'ar' ? b.name_ar : b.name}
                     </option>
                   ))}
@@ -328,7 +342,7 @@ export function ShopPage() {
           <div className="flex flex-wrap gap-2 mb-6">
             {brandFilter && (
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#B8956E]/10 text-[#B8956E] rounded-full text-sm">
-                {BRANDS.find(b => b.id === brandFilter)?.name_ar || BRANDS.find(b => b.id === brandFilter)?.name || brandFilter}
+                {brands.find(b => b.slug === brandFilter)?.name_ar || brands.find(b => b.slug === brandFilter)?.name || brandFilter}
                 <button onClick={() => updateFilter('brand', '')}><X className="h-3 w-3" /></button>
               </span>
             )}

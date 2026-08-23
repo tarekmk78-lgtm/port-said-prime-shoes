@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { useI18n } from '../../lib/i18n';
 import { useCart } from '../../lib/cart-context';
 import { useWishlist } from '../../lib/wishlist-context';
-import { useAuth } from '../../lib/auth-context';
 import { Product } from '../../types';
 import { formatPrice, getDiscountPercentage, getWhatsAppUrl } from '../../lib/utils';
 import { Heart, ShoppingBag, MessageCircle, Star } from 'lucide-react';
@@ -19,9 +18,10 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
-  const { t, language } = useI18n();
+  const { language } = useI18n();
   const { addItem } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || '';
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -60,7 +60,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const url = getWhatsAppUrl('+20123456789', { name: product.name, name_ar: product.name_ar }, product.variants?.[0], 1, product.price, language);
+    // ✅ استخدام رقم الواتساب الحقيقي من الإعدادات بدل رقم ثابت خاطئ
+    const url = getWhatsAppUrl(whatsappNumber, { name: product.name, name_ar: product.name_ar }, product.variants?.[0], 1, product.price, language);
     window.open(url, '_blank');
   };
 

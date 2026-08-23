@@ -4,9 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth-context';
 import { useCart } from '../../lib/cart-context';
-import { useWhatsAppNumber } from '../../lib/settings-context';
 import { supabase } from '../../lib/supabase'; // ✅ تمت الإضافة
-import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles, Truck, ShieldCheck } from 'lucide-react';
+import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/', key: 'nav.home' },
@@ -31,7 +30,7 @@ export function Header() {
   const { t, language, setLanguage, isRTL } = useI18n();
   const { user, signOut, isAdmin } = useAuth();
   const { itemCount } = useCart();
-  const whatsappNumber = useWhatsAppNumber();
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const navigate = useNavigate();
   
   const [isScrolled, setIsScrolled] = useState(false);
@@ -56,6 +55,20 @@ export function Header() {
       if (data) setBrands(data);
     }
     fetchBrands();
+  }, []);
+
+  useEffect(() => {
+    async function fetchWhatsAppNumber() {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'whatsapp_number')
+        .maybeSingle();
+
+      if (data?.value) setWhatsappNumber(String(data.value));
+    }
+
+    fetchWhatsAppNumber();
   }, []);
 
   useEffect(() => {
@@ -117,7 +130,7 @@ export function Header() {
           <div className="flex items-center justify-between gap-4">
             
             {/* Mobile Menu Button */}
-            <button className="lg:hidden p-2 -ml-2 text-gray-900" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <button className="lg:hidden p-2 -ml-2 text-gray-900" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label={language === 'ar' ? 'فتح القائمة' : 'Open menu'}>
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
 
@@ -193,7 +206,7 @@ export function Header() {
               <Link to="/cart" className="p-2.5 rounded-full hover:bg-gray-100 text-gray-700 hover:text-black transition-colors relative">
                 <ShoppingBag className="h-5 w-5" />
                 {itemCount > 0 && (
-                  <span className="absolute top-1 right-1 h-4.5 w-4.5 bg-black text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                  <span className="absolute top-1 right-1 h-[18px] w-[18px] bg-black text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                     {itemCount > 9 ? '9+' : itemCount}
                   </span>
                 )}
@@ -257,7 +270,7 @@ export function Header() {
                     <span className="font-display text-xl font-black text-gray-900">PRIME</span>
                     <span className="text-[9px] uppercase tracking-widest text-gray-500">Port Said Shoes</span>
                   </div>
-                  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label={language === 'ar' ? 'إغلاق القائمة' : 'Close menu'}>
                     <X className="h-6 w-6 text-gray-600" />
                   </button>
                 </div>

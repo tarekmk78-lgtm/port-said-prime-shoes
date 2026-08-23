@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useI18n } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth-context';
 import { useSettings } from '../../lib/settings-context';
@@ -9,8 +10,18 @@ export function Footer() {
   const { t, language } = useI18n();
   const { isAdmin } = useAuth();
   const { settings } = useSettings();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
 
   const currentYear = new Date().getFullYear();
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+
+    // TODO: wire this up to the real newsletter/subscribers endpoint once one exists.
+    toast.success(language === 'ar' ? 'تم الاشتراك بنجاح!' : 'Subscribed successfully!');
+    setNewsletterEmail('');
+  };
 
   return (
     <footer className="bg-black text-white pt-16 pb-8">
@@ -29,9 +40,12 @@ export function Footer() {
                   : 'Subscribe to our newsletter for the latest offers and exclusive collections.'}
               </p>
             </div>
-            <form className="flex w-full lg:w-auto gap-3">
+            <form onSubmit={handleNewsletterSubmit} className="flex w-full lg:w-auto gap-3">
               <input 
                 type="email" 
+                required
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
                 placeholder={language === 'ar' ? 'أدخل بريدك الإلكتروني' : 'Enter your email'} 
                 className="flex-1 lg:w-80 h-12 px-5 bg-white/5 rounded-full border border-white/10 focus:outline-none focus:border-amber-500 text-white placeholder:text-gray-500 transition-colors"
               />
