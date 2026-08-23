@@ -38,7 +38,13 @@ const AdminBrands = lazy(() => import('./pages/admin/AdminBrands').then((m: any)
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+function ProtectedRoute({
+  children,
+  adminOnly = false,
+}: {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}) {
   const { session, loading, isAdmin } = useAuth();
   if (loading) {
     return (
