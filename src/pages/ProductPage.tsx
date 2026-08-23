@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useCart } from '../lib/cart-context';
 import { useWishlist } from '../lib/wishlist-context';
@@ -20,6 +20,7 @@ import {
 
 export function ProductPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { language, t } = useI18n();
   const { addItem } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -139,7 +140,7 @@ export function ProductPage() {
   const availableColors = variants.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
 
-  // ✅ دالة إضافة للسلة - بسيطة ومضمونة
+  // ✅ دالة إضافة للسلة
   const handleAddToCart = async () => {
     if (!product) return;
     
@@ -152,26 +153,24 @@ export function ProductPage() {
     await addItem(product, selectedVariant, quantity);
   };
 
-  // ✅ دالة واتساب - بسيطة ومضمونة
+  // ✅ دالة الواتساب - تنتقل لصفحة Checkout لملء البيانات
   const handleWhatsAppOrder = () => {
     if (!product) return;
 
-    const phone = '201007526286';
-    
-    const name = language === 'ar' ? product.name_ar : product.name;
-    const size = selectedVariant?.size || 'قياس موحد';
-    const color = selectedVariant?.color || (selectedColor || 'قياسي');
-    const price = product.price;
+    const stock = selectedVariant?.stock_quantity ?? product.stock_quantity;
+    if (stock <= 0) {
+      toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
+      return;
+    }
 
-    const msg = `*طلب جديد من الموقع*\n\n` +
-                `📦 *المنتج:* ${name}\n` +
-                `📏 *المقاس:* ${size}\n` +
-                ` *اللون:* ${color}\n` +
-                `💰 *السعر:* ${price} ج.م\n` +
-                `🔢 *الكمية:* ${quantity}\n\n` +
-                `شكراً!`;
-    
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    // الانتقال لصفحة WhatsApp Checkout مع بيانات المنتج
+    navigate('/checkout/whatsapp', { 
+      state: { 
+        product, 
+        variant: selectedVariant,
+        quantity 
+      } 
+    });
   };
 
   if (loading) return <div className="min-h-screen pb-16"><div className="max-w-7xl mx-auto px-4 md:px-6 py-8"><ProductGridSkeleton count={1} /></div></div>;
@@ -304,7 +303,7 @@ export function ProductPage() {
                       style={{ backgroundColor: variant.color_code || variant.color.toLowerCase() }}
                       title={variant.color}
                     >
-                      {selectedColor === variant.color && <Check className="w-5 w-5 text-white drop-shadow-md" />}
+                      {selectedColor === variant.color && <Check className="w-5 h-5 text-white drop-shadow-md" />}
                     </button>
                   ))}
                 </div>
@@ -368,6 +367,7 @@ export function ProductPage() {
                 }
               </Button>
               
+              {/* ✅ زر الواتساب - ينقل لصفحة Checkout */}
               <button
                 onClick={handleWhatsAppOrder}
                 disabled={isOutOfStock}
