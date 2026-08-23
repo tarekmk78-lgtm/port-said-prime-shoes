@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useCart } from '../lib/cart-context';
 import { useWishlist } from '../lib/wishlist-context';
+import { useSettings } from '../lib/settings-context'; // ✅ تمت الإضافة لجلب رقم الواتساب
 import { Product, ProductVariant, Review } from '../types';
 import { supabase } from '../lib/supabase';
 import { formatPrice, getDiscountPercentage } from '../lib/utils';
@@ -20,10 +21,10 @@ import {
 
 export function ProductPage() {
   const { slug } = useParams();
-  const navigate = useNavigate();
   const { language, t } = useI18n();
   const { addItem } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const { settings } = useSettings(); // ✅ جلب الإعدادات
   
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
@@ -88,9 +89,6 @@ export function ProductPage() {
         const { data: variantsData } = await supabase.from('product_variants').select('*').eq('product_id', productData.id);
         setVariants(variantsData || []);
 
-        // ✅ مفيش foreign key متعرّف بين reviews و profiles في قاعدة البيانات
-        // (أكدها خطأ PGRST200)، فمينفعش نستخدم embed/join خالص. بنجيب
-        // التقييمات عادي، وبعدين بروفايلات أصحابها في طلب منفصل، وندمجهم يدوي.
         const { data: reviewsData } = await supabase
           .from('reviews')
           .select('*')
@@ -142,13 +140,12 @@ export function ProductPage() {
 
   const availableColors = variants.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
-  // ✅ منتجات كتير مفيهاش مقاسات/ألوان مسجلة (variants) خالص — دي مش حالة استثنائية،
-  // فمينفعش نمنع الطلب/الإضافة للسلة في الحالة دي، لازم نعتبرها منتج بسيط ونعتمد
-  // على المخزون العام بتاعه (product.stock_quantity) بدل ما نستنى variant اتحدد
   const hasVariants = variants.length > 0;
 
+  // ✅ دالة الإضافة للسلة المعدلة لتدعم المنتجات بدون مقاسات
   const handleAddToCart = async () => {
     if (!product) return;
+    
     if (hasVariants) {
       if (!selectedVariant) {
         toast.error(language === 'ar' ? 'يرجى اختيار المقاس واللون' : 'Please select size and color');
@@ -164,18 +161,55 @@ export function ProductPage() {
         toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
         return;
       }
-      await addItem(product, null, quantity);
+      // إنشاء متغير افتراضي للمنتجات التي لا تحتوي على مقاسات
+      const defaultVariant = {
+        id: `${product.id}-default`,
+        product_id: product.id,
+        size: 'قياس موحد',
+        color: 'قياسي',
+        color_code: '#000000',
+        stock_quantity: product.stock_quantity,
+        price_adjustment: 0,
+        sku: product.sku || 'DEFAULT',
+        price: product.price,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as unknown as ProductVariant;
+
+      await addItem(product, defaultVariant, quantity);
     }
-    toast.success(language === 'ar' ? 'تمت الإضافة للسلة' : 'Added to cart');
   };
 
+  // ✅ دالة الواتساب المباشرة والمعدلة
   const handleWhatsAppOrder = () => {
     if (!product) return;
+    
     if (hasVariants && !selectedVariant) {
       toast.error(language === 'ar' ? 'يرجى اختيار المقاس أولاً' : 'Please select a size first');
       return;
     }
-    navigate('/checkout/whatsapp', { state: { product, variant: hasVariants ? selectedVariant : null } });
+
+    // تجهيز بيانات المتغير (افتراضي إذا لم يكن هناك مقاسات)
+    const variantData = hasVariants && selectedVariant
+      ? selectedVariant
+      : { size: 'قياس موحد', color: 'قياسي', price_adjustment: 0 };
+
+    // جلب الرقم من الإعدادات أو استخدام رقم افتراضي (قم بتغيير الرقم الافتراضي برقمك)
+    const rawPhone = settings?.whatsapp_number || '201000000000'; 
+    const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+    
+    const productName = language === 'ar' ? product.name_ar : product.name;
+    const variantDetails = `${variantData.size} / ${variantData.color}`;
+    const finalPrice = product.price + ((variantData as any)?.price_adjustment || 0);
+
+    const message = `مرحباً، أريد طلب هذا المنتج:\n` +
+                    `📦 *المنتج:* ${productName}\n` +
+                    `📏 *المقاس/اللون:* ${variantDetails}\n` +
+                    `💰 *السعر:* ${finalPrice} ج.م\n` +
+                    `🔢 *الكمية:* ${quantity}`;
+
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   if (loading) return <div className="min-h-screen pb-16"><div className="max-w-7xl mx-auto px-4 md:px-6 py-8"><ProductGridSkeleton count={1} /></div></div>;
@@ -190,8 +224,6 @@ export function ProductPage() {
 
   const discount = product.compare_at_price ? getDiscountPercentage(product.price, product.compare_at_price) : 0;
   const name = language === 'ar' ? product.name_ar : product.name;
-  // ✅ فولباك فاضي عشان لو المنتج مفيهوش وصف باللغة دي، الصفحة متكسرش
-  // (كانت description.split(...) بتعمل crash لو القيمة null)
   const description = (language === 'ar' ? product.description_ar : product.description) || '';
 
   return (
@@ -239,7 +271,6 @@ export function ProductPage() {
                 <span className="absolute top-4 right-4 px-3 py-1.5 bg-amber-500 text-black text-xs font-bold rounded-full">NEW</span>
               )}
               
-              {/* Image Navigation Arrows */}
               {product.images && product.images.length > 1 && (
                 <>
                   <button onClick={() => setCurrentImage((p) => (p === 0 ? product.images.length - 1 : p - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black hover:text-white">
@@ -252,7 +283,6 @@ export function ProductPage() {
               )}
             </div>
             
-            {/* Thumbnails */}
             {product.images && product.images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {product.images.map((image, index) => (
@@ -277,7 +307,6 @@ export function ProductPage() {
             )}
             <h1 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-4">{name}</h1>
 
-            {/* Rating */}
             <div className="flex items-center gap-3 mb-6">
               <div className="flex">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -289,7 +318,6 @@ export function ProductPage() {
               </span>
             </div>
 
-            {/* Price */}
             <div className="flex items-center gap-4 mb-8 pb-8 border-b border-gray-100">
               <span className="text-3xl font-bold text-gray-900">{formatPrice(product.price)}</span>
               {product.compare_at_price && product.compare_at_price > product.price && (
@@ -297,7 +325,6 @@ export function ProductPage() {
               )}
             </div>
 
-            {/* Color Selection */}
             {availableColors.length > 0 && (
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-900 mb-3">
@@ -319,7 +346,6 @@ export function ProductPage() {
               </div>
             )}
 
-            {/* Size Selection */}
             {availableSizes.length > 0 && (
               <div className="mb-8">
                 <label className="block text-sm font-semibold text-gray-900 mb-3">{t('product.selectSize')}</label>
@@ -344,7 +370,6 @@ export function ProductPage() {
               </div>
             )}
 
-            {/* Quantity */}
             <div className="mb-8">
               <label className="block text-sm font-semibold text-gray-900 mb-3">{t('product.quantity')}</label>
               <div className="flex items-center gap-4">
@@ -364,21 +389,36 @@ export function ProductPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons - تم التعديل لضمان عمل الزر دائماً */}
             <div className="flex flex-col gap-3 mb-8">
               <Button
                 size="lg"
                 onClick={handleAddToCart}
                 disabled={hasVariants ? (!selectedVariant || selectedVariant.stock_quantity === 0) : product.stock_quantity === 0}
-                className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl"
+                className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {t('product.addToCart')}
               </Button>
-              <Button size="lg" onClick={handleWhatsAppOrder} disabled={hasVariants && !selectedVariant} className="w-full h-14 bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all rounded-xl flex items-center justify-center gap-2">
+              
+              <button
+                onClick={handleWhatsAppOrder}
+                disabled={hasVariants && !selectedVariant}
+                className={`w-full h-14 font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition-all ${
+                  (hasVariants && !selectedVariant)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
+                }`}
+              >
                 <MessageCircle className="h-5 w-5" />
                 {language === 'ar' ? 'اطلب الآن عبر الواتساب' : 'Order Now via WhatsApp'}
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => product && toggleWishlist(product)} className={`w-full h-14 rounded-xl flex items-center justify-center gap-2 ${product && isWishlisted(product.id) ? 'text-red-500 border-red-200 bg-red-50' : 'text-gray-700'}`}>
+              </button>
+
+              <Button 
+                size="lg" 
+                variant="outline" 
+                onClick={() => product && toggleWishlist(product)} 
+                className={`w-full h-14 rounded-xl flex items-center justify-center gap-2 ${product && isWishlisted(product.id) ? 'text-red-500 border-red-200 bg-red-50' : 'text-gray-700'}`}
+              >
                 <Heart className={`h-5 w-5 ${product && isWishlisted(product.id) ? 'fill-current' : ''}`} />
                 {language === 'ar' ? 'أضف للمفضلة' : 'Add to Wishlist'}
               </Button>
@@ -469,7 +509,6 @@ export function ProductPage() {
           </div>
         </div>
 
-        {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="mt-20 pt-10 border-t border-gray-100">
             <h2 className="font-display text-3xl font-bold text-gray-900 mb-8 text-center">
