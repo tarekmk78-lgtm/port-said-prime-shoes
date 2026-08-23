@@ -122,43 +122,70 @@ export function ProductPage() {
   const availableColors = variants.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
 
+  // ✅ دالة الإضافة للسلة المعدلة لتدعم "قياس موحد" تلقائياً
   const handleAddToCart = async () => {
-    if (!product || !selectedVariant) {
-      toast.error(language === 'ar' ? 'يرجى اختيار المقاس واللون أولاً' : 'Please select size and color first');
+    if (!product) return;
+
+    let variantToAdd = selectedVariant;
+    // إذا لم يتم اختيار متغير (بسبب عدم وجود مقاسات)، نقوم بإنشاء متغير افتراضي
+    if (!variantToAdd) {
+      variantToAdd = {
+        id: `${product.id}-default`,
+        product_id: product.id,
+        size: 'قياس موحد',
+        color: selectedColor || 'قياسي',
+        color_code: '#000000',
+        stock_quantity: product.stock_quantity,
+        price_adjustment: 0,
+        sku: product.sku || 'DEFAULT'
+      } as unknown as ProductVariant;
+    }
+
+    if (variantToAdd.stock_quantity <= 0) {
+      toast.error(language === 'ar' ? 'المنتج غير متوفر حالياً' : 'Out of stock');
       return;
     }
-    if (selectedVariant.stock_quantity <= 0) {
-      toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
-      return;
-    }
-    // ✅ تم إزالة toast.success من هنا لأن cart-context يقوم بإظهارها بالفعل لتجنب التكرار
-    await addItem(product, selectedVariant, quantity);
+
+    await addItem(product, variantToAdd, quantity);
   };
 
-  // ✅ دالة الواتساب المباشرة والمصححة
+  // ✅ دالة الواتساب المعدلة لتدعم "قياس موحد" تلقائياً
   const handleWhatsAppOrder = () => {
-    if (!product || !selectedVariant) {
-      toast.error(language === 'ar' ? 'يرجى اختيار المقاس واللون أولاً' : 'Please select size and color first');
-      return;
+    if (!product) return;
+
+    let variantToOrder = selectedVariant;
+    if (!variantToOrder) {
+      variantToOrder = {
+        id: `${product.id}-default`,
+        product_id: product.id,
+        size: 'قياس موحد',
+        color: selectedColor || 'قياسي',
+        color_code: '#000000',
+        price_adjustment: 0,
+        stock_quantity: product.stock_quantity,
+        price: product.price,
+        sku: product.sku || 'DEFAULT'
+      } as unknown as ProductVariant;
     }
 
-    // 1. تنظيف رقم الهاتف (استبدل الرقم الافتراضي برقمك إذا لم يكن مضبوطاً في الإعدادات)
     const rawPhone = settings?.whatsapp_number || '201000000000'; 
     const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
 
-    // 2. تجهيز البيانات
     const productName = language === 'ar' ? product.name_ar : product.name;
-    const variantDetails = `${selectedVariant.size || ''} / ${selectedVariant.color || ''}`.trim() || 'قياسي';
-    const finalPrice = product.price;
+    
+    const sizeText = (variantToOrder.size && variantToOrder.size !== 'قياس موحد') ? variantToOrder.size : 'قياس موحد';
+    const colorText = variantToOrder.color || 'قياسي';
+    const variantDetails = `${sizeText} / ${colorText}`;
 
-    // 3. بناء الرسالة
+    const priceAdjustment = (variantToOrder as ProductVariant & { price_adjustment?: number }).price_adjustment || 0;
+    const finalPrice = product.price + priceAdjustment;
+
     const message = `مرحباً، أريد طلب هذا المنتج:\n` +
                     `📦 *المنتج:* ${productName}\n` +
                     `📏 *المقاس/اللون:* ${variantDetails}\n` +
                     `💰 *السعر:* ${finalPrice} ج.م\n` +
                     `🔢 *الكمية:* ${quantity}`;
 
-    // 4. فتح الواتساب
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -176,6 +203,9 @@ export function ProductPage() {
   const discount = product.compare_at_price ? getDiscountPercentage(product.price, product.compare_at_price) : 0;
   const name = language === 'ar' ? product.name_ar : product.name;
   const description = (language === 'ar' ? product.description_ar : product.description) || '';
+
+  // ✅ التحقق الذكي من المخزون (سواء كان هناك متغيرات أم لا)
+  const isOutOfStock = selectedVariant ? selectedVariant.stock_quantity === 0 : product.stock_quantity === 0;
 
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-16">
@@ -334,20 +364,21 @@ export function ProductPage() {
                   </button>
                 </div>
                 <span className="text-sm text-gray-500 flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${ (selectedVariant?.stock_quantity || product.stock_quantity) > 0 ? 'bg-green-500' : 'bg-red-500' }`}></span>
-                  {(selectedVariant?.stock_quantity || product.stock_quantity) > 0 ? (language === 'ar' ? 'متوفر في المخزن' : 'In Stock') : (language === 'ar' ? 'نفذت الكمية' : 'Out of Stock')}
+                  <span className={`w-2 h-2 rounded-full ${ !isOutOfStock ? 'bg-green-500' : 'bg-red-500' }`}></span>
+                  {!isOutOfStock ? (language === 'ar' ? 'متوفر في المخزن' : 'In Stock') : (language === 'ar' ? 'نفذت الكمية' : 'Out of Stock')}
                 </span>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="flex flex-col gap-3 mb-8">
-              <Button size="lg" onClick={handleAddToCart} disabled={!selectedVariant || selectedVariant.stock_quantity === 0} className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl">
+              {/* ✅ تم إزالة شرط !selectedVariant من disabled ليتم السماح بالإضافة حتى بدون مقاس */}
+              <Button size="lg" onClick={handleAddToCart} disabled={isOutOfStock} className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl">
                 {t('product.addToCart')}
               </Button>
               
               {/* ✅ زر الواتساب المباشر */}
-              <Button size="lg" onClick={handleWhatsAppOrder} disabled={!selectedVariant} className="w-full h-14 bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all rounded-xl flex items-center justify-center gap-2">
+              <Button size="lg" onClick={handleWhatsAppOrder} className="w-full h-14 bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all rounded-xl flex items-center justify-center gap-2">
                 <MessageCircle className="h-5 w-5" />
                 {language === 'ar' ? 'اطلب الآن عبر الواتساب' : 'Order Now via WhatsApp'}
               </Button>
