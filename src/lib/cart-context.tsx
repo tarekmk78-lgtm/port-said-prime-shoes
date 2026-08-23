@@ -2,8 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from './supabase';
 import { useAuth } from './auth-context';
 import { Product, ProductVariant } from '../types';
+import toast from 'react-hot-toast'; // ✅ تمت إضافة مكتبة التنبيهات
 
-// تعريف CartItem محلياً مع كل الـ properties المطلوبة
 interface CartItem {
   id: string;
   product_id: string;
@@ -21,7 +21,7 @@ interface CartContextType {
   discount: number;
   total: number;
   itemCount: number;
-  addItem: (product: Product, variant: ProductVariant, quantity?: number) => Promise<void>;
+  addItem: (product: Product, variant: ProductVariant | null, quantity?: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -56,7 +56,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } else {
       const savedCart = localStorage.getItem('cart');
       if (savedCart) {
-        setItems(JSON.parse(savedCart));
+        try {
+          setItems(JSON.parse(savedCart));
+        } catch (e) {
+          localStorage.removeItem('cart');
+        }
       }
       setLoading(false);
     }
@@ -99,7 +103,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addItem = async (product: Product, variant: ProductVariant, quantity = 1) => {
+  const addItem = async (product: Product, variant: ProductVariant | null, quantity = 1) => {
+    // ✅ 1. التحقق من اختيار المقاس/اللون قبل الإضافة
+    if (!variant) {
+      toast.error('يرجى اختيار المقاس واللون أولاً');
+      return;
+    }
+
     const existingIndex = items.findIndex(
       (item) => item.product_id === product.id && item.variant_id === variant.id
     );
@@ -107,8 +117,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (existingIndex > -1) {
       const newQuantity = items[existingIndex].quantity + quantity;
       await updateQuantity(items[existingIndex].id, newQuantity);
+      toast.success('تم تحديث الكمية في السلة');
       return;
     }
+
+    // ✅ 2. حساب السعر الصحيح بما فيه تعديل السعر للمقاس
+    const priceAdjustment = (variant as ProductVariant & { price_adjustment?: number }).price_adjustment ?? 0;
+    const finalPrice = product.price + priceAdjustment;
 
     const newItem: CartItem = {
       id: crypto.randomUUID(),
@@ -117,7 +132,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       variant_id: variant.id,
       variant,
       quantity,
-      price: product.price,
+      price: finalPrice,
     };
 
     if (user) {
@@ -129,20 +144,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
             product_id: product.id,
             variant_id: variant.id,
             quantity,
-            price: product.price,
+            price: finalPrice,
           })
           .select()
           .single();
 
-        if (!error && data) {
-          newItem.id = data.id;
-        }
+        if (error) throw error;
+        if (data) newItem.id = data.id;
+        
       } catch (error) {
         console.error('Error adding to cart:', error);
+        toast.error('حدث خطأ أثناء الحفظ في قاعدة البيانات');
+        return; // إيقاف التنفيذ إذا فشل الحفظ
       }
     }
 
     setItems([...items, newItem]);
+    toast.success('تمت إضافة المنتج للسلة بنجاح');
   };
 
   const removeItem = async (itemId: string) => {
@@ -198,12 +216,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
-        .eq('code', code)
+        .eq('code', code.toUpperCase()) // ✅ جعل الكود أحرف كبيرة لتجنب أخطاء المطابقة
         .eq('is_active', true)
         .single();
 
       if (error || !data) {
-        return { success: false, message: 'Invalid coupon code' };
+        return { success: false, message: 'كود الخصم غير صحيح' };
       }
 
       const now = new Date();
@@ -211,17 +229,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const expiresAt = new Date(data.expires_at);
 
       if (now < startsAt || now > expiresAt) {
-        return { success: false, message: 'Coupon has expired' };
+        return { success: false, message: 'كود الخصم منتهي الصلاحية' };
       }
 
       if (data.max_uses && data.uses_count >= data.max_uses) {
-        return { success: false, message: 'Coupon has reached maximum uses' };
+        return { success: false, message: 'تم استخدام هذا الكود بالحد الأقصى' };
       }
 
       if (data.min_order_amount && subtotal < data.min_order_amount) {
         return {
           success: false,
-          message: `Minimum order amount is ${data.min_order_amount}`
+          message: `الحد الأدنى للطلب لتفعيل الكود هو ${data.min_order_amount} ج.م`
         };
       }
 
@@ -232,11 +250,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         discountAmount = data.value;
       }
 
-      setCouponCode(code);
+      setCouponCode(code.toUpperCase());
       setCouponDiscount(discountAmount);
-      return { success: true, message: 'Coupon applied successfully' };
+      return { success: true, message: 'تم تطبيق كود الخصم بنجاح' };
     } catch (error) {
-      return { success: false, message: 'Error applying coupon' };
+      return { success: false, message: 'حدث خطأ أثناء تطبيق الكود' };
     }
   };
 
