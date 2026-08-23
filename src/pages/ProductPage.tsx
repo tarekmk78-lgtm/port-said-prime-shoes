@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useCart } from '../lib/cart-context';
 import { useWishlist } from '../lib/wishlist-context';
-import { useSettings } from '../lib/settings-context';
 import { Product, ProductVariant, Review } from '../types';
 import { supabase } from '../lib/supabase';
 import { formatPrice, getDiscountPercentage } from '../lib/utils';
@@ -24,7 +23,6 @@ export function ProductPage() {
   const { language, t } = useI18n();
   const { addItem } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const { settings } = useSettings();
   
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
@@ -89,19 +87,27 @@ export function ProductPage() {
         const { data: variantsData } = await supabase.from('product_variants').select('*').eq('product_id', productData.id);
         setVariants(variantsData || []);
 
-        // ✅ جلب التقييمات مع بيانات المستخدم (العلاقة موجودة في قاعدة البيانات)
-        const { data: reviewsData, error: reviewsError } = await supabase
+        // جلب التقييمات بدون join لتجنب خطأ PGRST200
+        const { data: reviewsData } = await supabase
           .from('reviews')
-          .select('*, profiles(full_name, avatar_url)')
+          .select('*')
           .eq('product_id', productData.id)
           .eq('is_approved', true)
           .order('created_at', { ascending: false });
 
-        if (reviewsError) {
-          console.error('Error fetching reviews:', reviewsError);
-          setReviews([]);
+        if (reviewsData && reviewsData.length > 0) {
+          const userIds = [...new Set(reviewsData.map((r: any) => r.user_id).filter(Boolean))];
+          let profilesById: Record<string, any> = {};
+          if (userIds.length > 0) {
+            const { data: profilesData } = await supabase
+              .from('profiles')
+              .select('id, full_name, avatar_url')
+              .in('id', userIds);
+            profilesById = Object.fromEntries((profilesData || []).map((p: any) => [p.id, p]));
+          }
+          setReviews(reviewsData.map((r: any) => ({ ...r, user: profilesById[r.user_id] || null })));
         } else {
-          setReviews(reviewsData || []);
+          setReviews([]);
         }
 
         if (productData.category_id) {
@@ -109,6 +115,7 @@ export function ProductPage() {
           setRelatedProducts(relatedData || []);
         }
 
+        // اختيار أول variant تلقائياً إذا كان موجوداً
         if (variantsData && variantsData.length > 0) {
           const uniqueColors = variantsData.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
           setSelectedColor(uniqueColors[0]?.color || null);
@@ -135,66 +142,68 @@ export function ProductPage() {
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
   const hasVariants = variants.length > 0;
 
+  // ✅ دالة الإضافة للسلة - تعمل دائماً
   const handleAddToCart = async () => {
     if (!product) return;
     
-    if (hasVariants) {
-      if (!selectedVariant) {
-        toast.error(language === 'ar' ? 'يرجى اختيار المقاس واللون' : 'Please select size and color');
-        return;
-      }
-      if (selectedVariant.stock_quantity <= 0) {
-        toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
-        return;
-      }
-      await addItem(product, selectedVariant, quantity);
-    } else {
-      if (product.stock_quantity <= 0) {
-        toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
-        return;
-      }
-      const defaultVariant = {
+    // التحقق من المخزون
+    const currentStock = selectedVariant?.stock_quantity ?? product.stock_quantity;
+    if (currentStock <= 0) {
+      toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
+      return;
+    }
+
+    // إذا لم يتم اختيار variant، ننشئ واحد افتراضي
+    let variantToAdd = selectedVariant;
+    if (!variantToAdd) {
+      variantToAdd = {
         id: `${product.id}-default`,
         product_id: product.id,
         size: 'قياس موحد',
         color: 'قياسي',
         color_code: '#000000',
         stock_quantity: product.stock_quantity,
-        price_adjustment: 0,
-        sku: product.sku || 'DEFAULT'
-      } as unknown as ProductVariant;
-      
-      await addItem(product, defaultVariant, quantity);
+        sku: product.sku || 'DEFAULT',
+        price: product.price,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
     }
+
+    await addItem(product, variantToAdd, quantity);
   };
 
+  // ✅ دالة الواتساب - تعمل دائماً مع رقمك الحقيقي
   const handleWhatsAppOrder = () => {
     if (!product) return;
-    
-    if (hasVariants && !selectedVariant) {
-      toast.error(language === 'ar' ? 'يرجى اختيار المقاس أولاً' : 'Please select a size first');
-      return;
-    }
 
-    const variantData = hasVariants && selectedVariant
-      ? selectedVariant
-      : { size: 'قياس موحد', color: 'قياسي' };
-
-    const rawPhone = settings?.whatsapp_number || '201000000000'; 
-    const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+    // رقم الواتساب الحقيقي
+    const phoneNumber = '201007526286';
     
+    // تجهيز بيانات المتغير
+    const variantInfo = selectedVariant || {
+      size: 'قياس موحد',
+      color: 'قياسي'
+    };
+
     const productName = language === 'ar' ? product.name_ar : product.name;
-    const variantDetails = `${variantData.size} / ${variantData.color}`;
-    const priceAdjustment = hasVariants && selectedVariant?.price ? (selectedVariant.price - product.price) : 0;
-    const finalPrice = product.price + priceAdjustment;
+    const finalPrice = selectedVariant ? (selectedVariant as any).price_adjustment ? product.price + (selectedVariant as any).price_adjustment : product.price : product.price;
+    const sizeInfo = variantInfo.size || 'قياس موحد';
+    const colorInfo = variantInfo.color || 'قياسي';
 
-    const message = `مرحباً، أريد طلب هذا المنتج:\n` +
+    const message = `*طلب جديد من الموقع*\n\n` +
                     `📦 *المنتج:* ${productName}\n` +
-                    `📏 *المقاس/اللون:* ${variantDetails}\n` +
-                    ` *السعر:* ${finalPrice} ج.م\n` +
-                    `🔢 *الكمية:* ${quantity}`;
+                    `📏 *المقاس:* ${sizeInfo}\n` +
+                    `🎨 *اللون:* ${colorInfo}\n` +
+                    `💰 *السعر:* ${finalPrice} ج.م\n` +
+                    `🔢 *الكمية:* ${quantity}\n\n` +
+                    `شكراً!`;
 
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    // فتح الواتساب
+    window.open(whatsappURL, '_blank');
   };
 
   if (loading) return <div className="min-h-screen pb-16"><div className="max-w-7xl mx-auto px-4 md:px-6 py-8"><ProductGridSkeleton count={1} /></div></div>;
@@ -210,6 +219,10 @@ export function ProductPage() {
   const discount = product.compare_at_price ? getDiscountPercentage(product.price, product.compare_at_price) : 0;
   const name = language === 'ar' ? product.name_ar : product.name;
   const description = (language === 'ar' ? product.description_ar : product.description) || '';
+  
+  // التحقق من المخزون للأزرار
+  const currentStock = selectedVariant?.stock_quantity ?? product.stock_quantity;
+  const isOutOfStock = currentStock <= 0;
 
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-16">
@@ -368,28 +381,31 @@ export function ProductPage() {
                   </button>
                 </div>
                 <span className="text-sm text-gray-500 flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${ (selectedVariant?.stock_quantity || product.stock_quantity) > 0 ? 'bg-green-500' : 'bg-red-500' }`}></span>
-                  {(selectedVariant?.stock_quantity || product.stock_quantity) > 0 ? (language === 'ar' ? 'متوفر في المخزن' : 'In Stock') : (language === 'ar' ? 'نفذت الكمية' : 'Out of Stock')}
+                  <span className={`w-2 h-2 rounded-full ${ !isOutOfStock ? 'bg-green-500' : 'bg-red-500' }`}></span>
+                  {!isOutOfStock ? (language === 'ar' ? 'متوفر في المخزن' : 'In Stock') : (language === 'ar' ? 'نفذت الكمية' : 'Out of Stock')}
                 </span>
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons - ✅ تعمل دائماً ما دام المنتج متوفراً */}
             <div className="flex flex-col gap-3 mb-8">
               <Button
                 size="lg"
                 onClick={handleAddToCart}
-                disabled={hasVariants ? (!selectedVariant || selectedVariant.stock_quantity === 0) : product.stock_quantity === 0}
+                disabled={isOutOfStock}
                 className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                {t('product.addToCart')}
+                {isOutOfStock 
+                  ? (language === 'ar' ? 'نفذت الكمية' : 'Out of Stock')
+                  : t('product.addToCart')
+                }
               </Button>
               
               <button
                 onClick={handleWhatsAppOrder}
-                disabled={hasVariants && !selectedVariant}
+                disabled={isOutOfStock}
                 className={`w-full h-14 font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition-all ${
-                  (hasVariants && !selectedVariant)
+                  isOutOfStock
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
                 }`}
@@ -464,30 +480,25 @@ export function ProductPage() {
                 {product && <ReviewForm productId={product.id} />}
                 {reviews.length > 0 ? (
                   <div className="space-y-6 mt-8">
-                    {reviews.map((review) => {
-                      const reviewProfile = (review as Review & { profiles?: { full_name?: string | null } }).profiles;
-                      const reviewerName = reviewProfile?.full_name || 'User';
-
-                      return (
-                        <div key={review.id} className="bg-gray-50 rounded-2xl p-6">
-                          <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white font-bold text-lg">
-                              {reviewerName.charAt(0).toUpperCase() || 'U'}
-                            </div>
-                            <div>
-                              <p className="font-bold text-gray-900">{reviewerName}</p>
-                              <div className="flex mt-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Star key={star} className={`h-4 w-4 ${star <= review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}`} />
-                                ))}
-                              </div>
+                    {reviews.map((review) => (
+                      <div key={review.id} className="bg-gray-50 rounded-2xl p-6">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white font-bold text-lg">
+                            {(review.user?.full_name || 'U')[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-900">{review.user?.full_name || 'User'}</p>
+                            <div className="flex mt-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star key={star} className={`h-4 w-4 ${star <= review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}`} />
+                              ))}
                             </div>
                           </div>
-                          <h4 className="font-bold text-gray-900 mb-2">{review.title}</h4>
-                          <p className="text-gray-600 leading-relaxed">{review.comment}</p>
                         </div>
-                      );
-                    })}
+                        <h4 className="font-bold text-gray-900 mb-2">{review.title}</h4>
+                        <p className="text-gray-600 leading-relaxed">{review.comment}</p>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-gray-500 text-center py-12 bg-gray-50 rounded-2xl">
