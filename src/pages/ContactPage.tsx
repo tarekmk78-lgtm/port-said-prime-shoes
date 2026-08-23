@@ -1,202 +1,204 @@
 import React, { useState } from 'react';
 import { useI18n } from '../lib/i18n';
+import { useSettings } from '../lib/settings-context';
 import { supabase } from '../lib/supabase';
-import { MapPin, Phone, Mail, Clock, Send, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, MessageCircle, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useSEO } from '../lib/seo';
 
 export function ContactPage() {
   const { language } = useI18n();
-  const whatsappNumber = '+20123456789';
-
-  useSEO({
-    title: language === 'ar' ? 'تواصل معنا' : 'Contact Us',
-    description:
-      language === 'ar'
-        ? 'تواصل مع فريق بورسعيد برايم شوز لأي استفسار عن المنتجات أو الطلبات'
-        : 'Get in touch with the Port Said Prime Shoes team for any product or order questions',
-    url: '/contact',
+  const { settings, loading } = useSettings(); // ✅ جلب الإعدادات من الـ Context
+  
+  const [sending, setSending] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: '',
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
+
+  const handleWhatsAppClick = () => {
+    const phoneNumber = (settings?.whatsapp_number || '201007526286').replace(/[^0-9]/g, '');
+    const message = language === 'ar' 
+      ? 'مرحباً، أريد التواصل معكم'
+      : 'Hello, I would like to contact you';
+    
+    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    setSending(true);
+
     try {
-      const { error } = await supabase.from('contact_messages').insert({
-        name: form.name,
-        email: form.email,
-        message: form.message,
-      });
+      // ملاحظة: تأكد من وجود جدول contact_messages في قاعدة البيانات
+      // أو يمكنك تغيير هذا الجزء ليرسل البيانات مباشرة للواتساب إذا لم يكن الجدول موجوداً
+      const { error } = await supabase
+        .from('contact_messages')
+        .insert({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          created_at: new Date().toISOString(),
+        });
+
       if (error) throw error;
-      toast.success(language === 'ar' ? 'تم إرسال رسالتك بنجاح' : 'Your message has been sent');
-      setForm({ name: '', email: '', message: '' });
-    } catch (error: any) {
+
+      toast.success(language === 'ar' ? 'تم إرسال رسالتك بنجاح' : 'Message sent successfully');
+      setFormData({ name: '', email: '', message: '' });
+    } catch (error) {
       console.error('Error sending message:', error);
-      toast.error(
-        error.message?.includes('relation') || error.code === '42P01'
-          ? (language === 'ar'
-              ? 'الجدول غير موجود بعد — راجع ملف migrations/004_contact_messages.sql'
-              : 'Table not found yet — run migrations/004_contact_messages.sql first')
-          : (language === 'ar' ? 'حدث خطأ، حاول مرة أخرى' : 'Something went wrong, please try again')
-      );
+      toast.error(language === 'ar' ? 'حدث خطأ أثناء الإرسال' : 'Error sending message');
     } finally {
-      setSubmitting(false);
+      setSending(false);
     }
   };
 
-  const info = [
-    {
-      icon: MapPin,
-      title: language === 'ar' ? 'العنوان' : 'Address',
-      text: language === 'ar' ? 'بورسعيد، مصر' : 'Port Said, Egypt',
-    },
-    {
-      icon: Phone,
-      title: language === 'ar' ? 'الهاتف' : 'Phone',
-      text: '+20 123 456 789',
-      href: 'tel:+20123456789',
-    },
-    {
-      icon: Mail,
-      title: language === 'ar' ? 'البريد الإلكتروني' : 'Email',
-      text: 'info@clarksportsaid.com',
-      href: 'mailto:info@clarksportsaid.com',
-    },
-    {
-      icon: Clock,
-      title: language === 'ar' ? 'ساعات العمل' : 'Working hours',
-      text: language === 'ar' ? 'يومياً 10ص - 10م' : 'Daily 10am – 10pm',
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8956E]"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
-      {/* Hero banner */}
-      <div className="bg-ink py-14 md:py-20">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
-          <span className="eyebrow justify-center text-gold-light">
-            {language === 'ar' ? 'نحن هنا من أجلك' : "We're here for you"}
-          </span>
-          <h1 className="font-display text-3xl md:text-4xl font-semibold text-white mt-3">
-            {language === 'ar' ? 'تواصل معنا' : 'Contact Us'}
-          </h1>
-          <p className="text-white/55 mt-3 max-w-xl mx-auto">
-            {language === 'ar'
-              ? 'لأي استفسار عن المنتجات، الطلبات، أو المقاسات، فريقنا في خدمتك'
-              : 'For any question about products, orders, or sizing — our team is ready to help'}
-          </p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 md:px-6">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-12">
+          {language === 'ar' ? 'بيانات التواصل' : 'Contact Information'}
+        </h1>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-20">
-        <div className="grid lg:grid-cols-5 gap-10 lg:gap-16">
-          {/* Info column */}
-          <div className="lg:col-span-2">
-            <h2 className="font-display text-2xl font-semibold text-ink mb-6">
-              {language === 'ar' ? 'بيانات التواصل' : 'Get in touch'}
-            </h2>
-            <div className="space-y-6 mb-10">
-              {info.map((item, i) => (
-                <div key={i} className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-full border border-gold/30 flex items-center justify-center flex-shrink-0">
-                    <item.icon className="h-5 w-5 text-gold" strokeWidth={1.75} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">{item.title}</p>
-                    {item.href ? (
-                      <a href={item.href} className="text-ink font-medium hover:text-gold transition-colors">
-                        {item.text}
-                      </a>
-                    ) : (
-                      <p className="text-ink font-medium">{item.text}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+        {/* Contact Info Cards */}
+        <div className="space-y-6 mb-12">
+          {/* Phone */}
+          <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+                <Phone className="h-6 w-6 text-[#B8956E]" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">{language === 'ar' ? 'الهاتف' : 'Phone'}</p>
+                <p className="text-lg font-semibold text-gray-900">{settings?.contact_phone || '+20 100 752 6286'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+                <Mail className="h-6 w-6 text-[#B8956E]" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</p>
+                <p className="text-lg font-semibold text-gray-900">{settings?.contact_email || 'tarekmk78@gmail.com'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+                <MapPin className="h-6 w-6 text-[#B8956E]" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">{language === 'ar' ? 'العنوان' : 'Address'}</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {language === 'ar' ? (settings?.contact_address || 'بورسعيد، مصر') : (settings?.contact_address_en || 'Port Said, Egypt')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Hours */}
+          <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-[#B8956E]" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">{language === 'ar' ? 'ساعات العمل' : 'Working Hours'}</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {language === 'ar' ? 'يومياً 10 ص - 10 م' : 'Daily 10 AM - 10 PM'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* WhatsApp Button */}
+        <button
+          onClick={handleWhatsAppClick}
+          className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 mb-12"
+        >
+          <MessageCircle className="h-6 w-6" />
+          {language === 'ar' ? 'تواصل عبر واتساب' : 'Contact via WhatsApp'}
+        </button>
+
+        {/* Contact Form */}
+        <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
+          <h2 className="text-2xl font-bold text-center mb-8">
+            {language === 'ar' ? 'أرسل رسالة' : 'Send a Message'}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {language === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                placeholder={language === 'ar' ? 'أدخل اسمك' : 'Enter your name'}
+              />
             </div>
 
-            <div className="stitch-divider mb-8" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {language === 'ar' ? 'البريد الإلكتروني' : 'Email'}
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                placeholder={language === 'ar' ? 'أدخل بريدك' : 'Enter your email'}
+              />
+            </div>
 
-            <a
-              href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-green-600 text-white font-semibold rounded-sm hover:bg-green-700 transition-colors"
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {language === 'ar' ? 'الرسالة' : 'Message'}
+              </label>
+              <textarea
+                required
+                rows={4}
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                placeholder={language === 'ar' ? 'اكتب رسالتك' : 'Write your message'}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={sending}
+              className="w-full bg-[#B8956E] text-white py-4 rounded-lg font-bold text-lg hover:bg-[#9e7d58] transition-colors flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              <MessageCircle className="h-5 w-5" />
-              {language === 'ar' ? 'تواصل عبر واتساب' : 'Chat on WhatsApp'}
-            </a>
-          </div>
-
-          {/* Form column */}
-          <div className="lg:col-span-3">
-            <div className="bg-white border border-hairline rounded-sm p-6 md:p-10">
-              <h2 className="font-display text-2xl font-semibold text-ink mb-6">
-                {language === 'ar' ? 'أرسل رسالة' : 'Send a message'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {language === 'ar' ? 'الاسم الكامل' : 'Full name'}
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full h-12 px-4 rounded-sm border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {language === 'ar' ? 'البريد الإلكتروني' : 'Email'}
-                  </label>
-                  <input
-                    required
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full h-12 px-4 rounded-sm border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {language === 'ar' ? 'رسالتك' : 'Message'}
-                  </label>
-                  <textarea
-                    required
-                    rows={5}
-                    value={form.message}
-                    onChange={(e) => setForm({ ...form, message: e.target.value })}
-                    className="w-full px-4 py-3 rounded-sm border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent resize-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-gold text-ink font-semibold rounded-sm hover:bg-gold-light transition-colors disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" />
-                  {submitting
-                    ? (language === 'ar' ? 'جارٍ الإرسال...' : 'Sending...')
-                    : (language === 'ar' ? 'إرسال الرسالة' : 'Send Message')}
-                </button>
-              </form>
-            </div>
-          </div>
+              <Send className="h-5 w-5" />
+              {sending 
+                ? (language === 'ar' ? 'جارٍ الإرسال...' : 'Sending...')
+                : (language === 'ar' ? 'إرسال الرسالة' : 'Send Message')
+              }
+            </button>
+          </form>
         </div>
-      </div>
-
-      {/* Map placeholder */}
-      <div className="h-72 md:h-96 bg-gray-200 relative overflow-hidden">
-        <iframe
-          title="map"
-          className="w-full h-full border-0"
-          loading="lazy"
-          src="https://www.google.com/maps?q=Port+Said,+Egypt&output=embed"
-        />
       </div>
     </div>
   );

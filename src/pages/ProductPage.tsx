@@ -87,7 +87,6 @@ export function ProductPage() {
         const { data: variantsData } = await supabase.from('product_variants').select('*').eq('product_id', productData.id);
         setVariants(variantsData || []);
 
-        // جلب التقييمات بدون join لتجنب خطأ PGRST200
         const { data: reviewsData } = await supabase
           .from('reviews')
           .select('*')
@@ -115,7 +114,6 @@ export function ProductPage() {
           setRelatedProducts(relatedData || []);
         }
 
-        // اختيار أول variant تلقائياً إذا كان موجوداً
         if (variantsData && variantsData.length > 0) {
           const uniqueColors = variantsData.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
           setSelectedColor(uniqueColors[0]?.color || null);
@@ -140,9 +138,8 @@ export function ProductPage() {
 
   const availableColors = variants.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
-  const hasVariants = variants.length > 0;
 
-  // ✅ دالة الإضافة للسلة - تعمل دائماً
+  // ✅ دالة الإضافة للسلة - بسيطة ومضمونة
   const handleAddToCart = async () => {
     if (!product) return;
     
@@ -153,42 +150,27 @@ export function ProductPage() {
       return;
     }
 
-    // إذا لم يتم اختيار variant، ننشئ واحد افتراضي
-    let variantToAdd = selectedVariant;
-    if (!variantToAdd) {
-      variantToAdd = {
-        id: `${product.id}-default`,
-        product_id: product.id,
-        size: 'قياس موحد',
-        color: 'قياسي',
-        color_code: '#000000',
-        stock_quantity: product.stock_quantity,
-        sku: product.sku || 'DEFAULT',
-        price: product.price,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-    }
-
-    await addItem(product, variantToAdd, quantity);
+    // نمرر selectedVariant (قد تكون null، وaddItem سيتعامل معها)
+    await addItem(product, selectedVariant, quantity);
   };
 
-  // ✅ دالة الواتساب - تعمل دائماً مع رقمك الحقيقي
+  // ✅ دالة الواتساب - بسيطة ومضمونة
   const handleWhatsAppOrder = () => {
     if (!product) return;
 
-    // رقم الواتساب الحقيقي
     const phoneNumber = '201007526286';
     
-    // تجهيز بيانات المتغير
     const variantInfo = selectedVariant || {
       size: 'قياس موحد',
-      color: 'قياسي'
+      color: selectedColor || 'قياسي',
+      price_adjustment: 0
     };
 
     const productName = language === 'ar' ? product.name_ar : product.name;
-    const finalPrice = selectedVariant ? (selectedVariant as any).price_adjustment ? product.price + (selectedVariant as any).price_adjustment : product.price : product.price;
+    const priceAdjustment = 'price_adjustment' in variantInfo
+      ? variantInfo.price_adjustment
+      : 0;
+    const finalPrice = product.price + (priceAdjustment || 0);
     const sizeInfo = variantInfo.size || 'قياس موحد';
     const colorInfo = variantInfo.color || 'قياسي';
 
@@ -202,7 +184,6 @@ export function ProductPage() {
 
     const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     
-    // فتح الواتساب
     window.open(whatsappURL, '_blank');
   };
 
@@ -220,7 +201,6 @@ export function ProductPage() {
   const name = language === 'ar' ? product.name_ar : product.name;
   const description = (language === 'ar' ? product.description_ar : product.description) || '';
   
-  // التحقق من المخزون للأزرار
   const currentStock = selectedVariant?.stock_quantity ?? product.stock_quantity;
   const isOutOfStock = currentStock <= 0;
 
@@ -387,7 +367,7 @@ export function ProductPage() {
               </div>
             </div>
 
-            {/* Action Buttons - ✅ تعمل دائماً ما دام المنتج متوفراً */}
+            {/* Action Buttons - ✅ بسيطة ومضمونة */}
             <div className="flex flex-col gap-3 mb-8">
               <Button
                 size="lg"

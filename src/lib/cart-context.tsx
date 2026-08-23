@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from './supabase';
 import { useAuth } from './auth-context';
 import { Product, ProductVariant } from '../types';
-import toast from 'react-hot-toast'; // ✅ تمت إضافة مكتبة التنبيهات
+import toast from 'react-hot-toast';
 
 interface CartItem {
   id: string;
@@ -103,54 +103,63 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ✅ دالة addItem المعدلة - تقبل null وتنشئ variant افتراضي تلقائياً
   const addItem = async (product: Product, variant: ProductVariant | null, quantity = 1) => {
-    // ✅ منتجات كتير مفيهاش مقاسات/ألوان (variants) خالص، فمينفعش نمنع
-    // الإضافة للسلة في الحالة دي. الشرط القديم كان بيرفض أي منتج من غير
-    // variant حتى لو الصفحة نفسها سمحت بالإضافة - وده كان بيمنع "إضافة للسلة"
-    // نهائياً على أي منتج مفيهوش variants.
+    // إذا لم يتم تمرير variant، ننشئ واحد افتراضي
+    let finalVariant = variant;
+    if (!finalVariant) {
+      finalVariant = {
+        id: `${product.id}-default`,
+        product_id: product.id,
+        size: 'قياس موحد',
+        color: 'قياسي',
+        color_code: '#000000',
+        stock_quantity: product.stock_quantity,
+        price: product.price,
+        price_adjustment: 0,
+        sku: product.sku || 'DEFAULT',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as ProductVariant;
+    }
 
     const existingIndex = items.findIndex(
-      (item) => item.product_id === product.id && item.variant_id === (variant?.id ?? undefined)
+      (item) => item.product_id === product.id && item.variant_id === finalVariant.id
     );
 
     if (existingIndex > -1) {
       const newQuantity = items[existingIndex].quantity + quantity;
       await updateQuantity(items[existingIndex].id, newQuantity);
-      toast.success('تم تحديث الكمية في السلة');
       return;
     }
 
-    // ✅ حساب السعر الصحيح بما فيه تعديل السعر للمقاس (لو موجود variant)
-    const priceAdjustment = variant ? ((variant as ProductVariant & { price_adjustment?: number }).price_adjustment ?? 0) : 0;
+    const priceAdjustment = (finalVariant as ProductVariant & {
+      price_adjustment?: number;
+    }).price_adjustment || 0;
     const finalPrice = product.price + priceAdjustment;
 
     const newItem: CartItem = {
       id: crypto.randomUUID(),
       product_id: product.id,
       product,
-      variant_id: variant?.id,
-      variant: variant ?? undefined,
+      variant_id: finalVariant.id,
+      variant: finalVariant,
       quantity,
       price: finalPrice,
     };
 
     if (user) {
       try {
-        const insertPayload: Record<string, any> = {
-          user_id: user.id,
-          product_id: product.id,
-          quantity,
-          price: finalPrice,
-        };
-        // ✅ منبعتش variant_id خالص لو المنتج مفيهوش variant، بدل ما نبعت null
-        // ممكن يعمل مشكلة لو العمود عنده NOT NULL/foreign key constraint
-        if (variant?.id) {
-          insertPayload.variant_id = variant.id;
-        }
-
         const { data, error } = await supabase
           .from('cart_items')
-          .insert(insertPayload)
+          .insert({
+            user_id: user.id,
+            product_id: product.id,
+            variant_id: finalVariant.id,
+            quantity,
+            price: finalPrice,
+          })
           .select()
           .single();
 
@@ -160,7 +169,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Error adding to cart:', error);
         toast.error('حدث خطأ أثناء الحفظ في قاعدة البيانات');
-        return; // إيقاف التنفيذ إذا فشل الحفظ
+        return;
       }
     }
 
@@ -221,7 +230,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
-        .eq('code', code.toUpperCase()) // ✅ جعل الكود أحرف كبيرة لتجنب أخطاء المطابقة
+        .eq('code', code.toUpperCase())
         .eq('is_active', true)
         .single();
 
