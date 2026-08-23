@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useI18n } from '../lib/i18n';
 import { useCart } from '../lib/cart-context';
 import { useWishlist } from '../lib/wishlist-context';
-import { useSettings } from '../lib/settings-context'; // ✅ تمت الإضافة لجلب رقم الواتساب
 import { Product, ProductVariant, Review } from '../types';
 import { supabase } from '../lib/supabase';
 import { formatPrice, getDiscountPercentage } from '../lib/utils';
@@ -21,10 +20,10 @@ import {
 
 export function ProductPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { language, t } = useI18n();
   const { addItem } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const { settings } = useSettings(); // ✅ جلب الإعدادات
   
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
@@ -89,6 +88,8 @@ export function ProductPage() {
         const { data: variantsData } = await supabase.from('product_variants').select('*').eq('product_id', productData.id);
         setVariants(variantsData || []);
 
+        // ✅ لازم alias صريح (user:) عشان الكود تحت بيدور على review.user
+        // مش review.profiles، وإلا اسم وصورة صاحب التقييم مش هيظهروا أبداً
         const { data: reviewsData } = await supabase.from('reviews').select('*, user:profiles(full_name, avatar_url)').eq('product_id', productData.id).eq('is_approved', true).order('created_at', { ascending: false });
         setReviews(reviewsData || []);
 
@@ -122,72 +123,25 @@ export function ProductPage() {
   const availableColors = variants.filter((v, i, arr) => arr.findIndex((item) => item.color === v.color) === i);
   const availableSizes = selectedColor ? variants.filter((v) => v.color === selectedColor) : [];
 
-  // ✅ دالة الإضافة للسلة المعدلة لتدعم "قياس موحد" تلقائياً
   const handleAddToCart = async () => {
-    if (!product) return;
-
-    let variantToAdd = selectedVariant;
-    // إذا لم يتم اختيار متغير (بسبب عدم وجود مقاسات)، نقوم بإنشاء متغير افتراضي
-    if (!variantToAdd) {
-      variantToAdd = {
-        id: `${product.id}-default`,
-        product_id: product.id,
-        size: 'قياس موحد',
-        color: selectedColor || 'قياسي',
-        color_code: '#000000',
-        stock_quantity: product.stock_quantity,
-        price_adjustment: 0,
-        sku: product.sku || 'DEFAULT'
-      } as unknown as ProductVariant;
-    }
-
-    if (variantToAdd.stock_quantity <= 0) {
-      toast.error(language === 'ar' ? 'المنتج غير متوفر حالياً' : 'Out of stock');
+    if (!product || !selectedVariant) {
+      toast.error(language === 'ar' ? 'يرجى اختيار المقاس واللون' : 'Please select size and color');
       return;
     }
-
-    await addItem(product, variantToAdd, quantity);
+    if (selectedVariant.stock_quantity <= 0) {
+      toast.error(language === 'ar' ? 'المنتج غير متوفر' : 'Out of stock');
+      return;
+    }
+    await addItem(product, selectedVariant, quantity);
+    toast.success(language === 'ar' ? 'تمت الإضافة للسلة' : 'Added to cart');
   };
 
-  // ✅ دالة الواتساب المعدلة لتدعم "قياس موحد" تلقائياً
   const handleWhatsAppOrder = () => {
-    if (!product) return;
-
-    let variantToOrder = selectedVariant;
-    if (!variantToOrder) {
-      variantToOrder = {
-        id: `${product.id}-default`,
-        product_id: product.id,
-        size: 'قياس موحد',
-        color: selectedColor || 'قياسي',
-        color_code: '#000000',
-        price_adjustment: 0,
-        stock_quantity: product.stock_quantity,
-        price: product.price,
-        sku: product.sku || 'DEFAULT'
-      } as unknown as ProductVariant;
+    if (!selectedVariant) {
+      toast.error(language === 'ar' ? 'يرجى اختيار المقاس أولاً' : 'Please select a size first');
+      return;
     }
-
-    const rawPhone = settings?.whatsapp_number || '201000000000'; 
-    const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
-
-    const productName = language === 'ar' ? product.name_ar : product.name;
-    
-    const sizeText = (variantToOrder.size && variantToOrder.size !== 'قياس موحد') ? variantToOrder.size : 'قياس موحد';
-    const colorText = variantToOrder.color || 'قياسي';
-    const variantDetails = `${sizeText} / ${colorText}`;
-
-    const priceAdjustment = (variantToOrder as ProductVariant & { price_adjustment?: number }).price_adjustment || 0;
-    const finalPrice = product.price + priceAdjustment;
-
-    const message = `مرحباً، أريد طلب هذا المنتج:\n` +
-                    `📦 *المنتج:* ${productName}\n` +
-                    `📏 *المقاس/اللون:* ${variantDetails}\n` +
-                    `💰 *السعر:* ${finalPrice} ج.م\n` +
-                    `🔢 *الكمية:* ${quantity}`;
-
-    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    navigate('/checkout/whatsapp', { state: { product, variant: selectedVariant } });
   };
 
   if (loading) return <div className="min-h-screen pb-16"><div className="max-w-7xl mx-auto px-4 md:px-6 py-8"><ProductGridSkeleton count={1} /></div></div>;
@@ -202,10 +156,9 @@ export function ProductPage() {
 
   const discount = product.compare_at_price ? getDiscountPercentage(product.price, product.compare_at_price) : 0;
   const name = language === 'ar' ? product.name_ar : product.name;
+  // ✅ فولباك فاضي عشان لو المنتج مفيهوش وصف باللغة دي، الصفحة متكسرش
+  // (كانت description.split(...) بتعمل crash لو القيمة null)
   const description = (language === 'ar' ? product.description_ar : product.description) || '';
-
-  // ✅ التحقق الذكي من المخزون (سواء كان هناك متغيرات أم لا)
-  const isOutOfStock = selectedVariant ? selectedVariant.stock_quantity === 0 : product.stock_quantity === 0;
 
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-16">
@@ -252,6 +205,7 @@ export function ProductPage() {
                 <span className="absolute top-4 right-4 px-3 py-1.5 bg-amber-500 text-black text-xs font-bold rounded-full">NEW</span>
               )}
               
+              {/* Image Navigation Arrows */}
               {product.images && product.images.length > 1 && (
                 <>
                   <button onClick={() => setCurrentImage((p) => (p === 0 ? product.images.length - 1 : p - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black hover:text-white">
@@ -264,6 +218,7 @@ export function ProductPage() {
               )}
             </div>
             
+            {/* Thumbnails */}
             {product.images && product.images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {product.images.map((image, index) => (
@@ -288,6 +243,7 @@ export function ProductPage() {
             )}
             <h1 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-4">{name}</h1>
 
+            {/* Rating */}
             <div className="flex items-center gap-3 mb-6">
               <div className="flex">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -299,6 +255,7 @@ export function ProductPage() {
               </span>
             </div>
 
+            {/* Price */}
             <div className="flex items-center gap-4 mb-8 pb-8 border-b border-gray-100">
               <span className="text-3xl font-bold text-gray-900">{formatPrice(product.price)}</span>
               {product.compare_at_price && product.compare_at_price > product.price && (
@@ -306,6 +263,7 @@ export function ProductPage() {
               )}
             </div>
 
+            {/* Color Selection */}
             {availableColors.length > 0 && (
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-900 mb-3">
@@ -327,6 +285,7 @@ export function ProductPage() {
               </div>
             )}
 
+            {/* Size Selection */}
             {availableSizes.length > 0 && (
               <div className="mb-8">
                 <label className="block text-sm font-semibold text-gray-900 mb-3">{t('product.selectSize')}</label>
@@ -351,6 +310,7 @@ export function ProductPage() {
               </div>
             )}
 
+            {/* Quantity */}
             <div className="mb-8">
               <label className="block text-sm font-semibold text-gray-900 mb-3">{t('product.quantity')}</label>
               <div className="flex items-center gap-4">
@@ -364,31 +324,28 @@ export function ProductPage() {
                   </button>
                 </div>
                 <span className="text-sm text-gray-500 flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${ !isOutOfStock ? 'bg-green-500' : 'bg-red-500' }`}></span>
-                  {!isOutOfStock ? (language === 'ar' ? 'متوفر في المخزن' : 'In Stock') : (language === 'ar' ? 'نفذت الكمية' : 'Out of Stock')}
+                  <span className={`w-2 h-2 rounded-full ${ (selectedVariant?.stock_quantity || product.stock_quantity) > 0 ? 'bg-green-500' : 'bg-red-500' }`}></span>
+                  {(selectedVariant?.stock_quantity || product.stock_quantity) > 0 ? (language === 'ar' ? 'متوفر في المخزن' : 'In Stock') : (language === 'ar' ? 'نفذت الكمية' : 'Out of Stock')}
                 </span>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="flex flex-col gap-3 mb-8">
-              {/* ✅ تم إزالة شرط !selectedVariant من disabled ليتم السماح بالإضافة حتى بدون مقاس */}
-              <Button size="lg" onClick={handleAddToCart} disabled={isOutOfStock} className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl">
+              <Button size="lg" onClick={handleAddToCart} disabled={!selectedVariant || selectedVariant.stock_quantity === 0} className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-all rounded-xl">
                 {t('product.addToCart')}
               </Button>
-              
-              {/* ✅ زر الواتساب المباشر */}
-              <Button size="lg" onClick={handleWhatsAppOrder} className="w-full h-14 bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all rounded-xl flex items-center justify-center gap-2">
+              <Button size="lg" onClick={handleWhatsAppOrder} disabled={!selectedVariant} className="w-full h-14 bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all rounded-xl flex items-center justify-center gap-2">
                 <MessageCircle className="h-5 w-5" />
                 {language === 'ar' ? 'اطلب الآن عبر الواتساب' : 'Order Now via WhatsApp'}
               </Button>
-              
               <Button size="lg" variant="outline" onClick={() => product && toggleWishlist(product)} className={`w-full h-14 rounded-xl flex items-center justify-center gap-2 ${product && isWishlisted(product.id) ? 'text-red-500 border-red-200 bg-red-50' : 'text-gray-700'}`}>
                 <Heart className={`h-5 w-5 ${product && isWishlisted(product.id) ? 'fill-current' : ''}`} />
                 {language === 'ar' ? 'أضف للمفضلة' : 'Add to Wishlist'}
               </Button>
             </div>
 
+            {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-2xl">
               {[
                 { Icon: ShieldCheck, label: language === 'ar' ? 'ماركات أصلية' : 'Authentic Brands' },
@@ -473,6 +430,7 @@ export function ProductPage() {
           </div>
         </div>
 
+        {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="mt-20 pt-10 border-t border-gray-100">
             <h2 className="font-display text-3xl font-bold text-gray-900 mb-8 text-center">
