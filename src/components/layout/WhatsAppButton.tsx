@@ -1,7 +1,5 @@
-import React from 'react';
 import { MessageCircle } from 'lucide-react';
 import { useI18n } from '../../lib/i18n';
-import { useWhatsAppNumber } from '../../lib/settings-context';
 
 /**
  * Site-wide floating WhatsApp button for general inquiries (not tied to a
@@ -11,7 +9,7 @@ import { useWhatsAppNumber } from '../../lib/settings-context';
  */
 export function WhatsAppButton() {
   const { language } = useI18n();
-  const whatsappNumber = useWhatsAppNumber();
+  const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER ?? '';
 
   const message =
     language === 'ar'
