@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth-context';
@@ -16,11 +16,12 @@ import {
   X,
   ChevronRight,
   Award,
+  Presentation,
 } from 'lucide-react';
 
 export function AdminLayout() {
   const { t, language } = useI18n();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -30,6 +31,7 @@ export function AdminLayout() {
     { path: '/admin/products', icon: Package, label: t('admin.products') },
     { path: '/admin/categories', icon: FolderOpen, label: t('admin.categories') },
     { path: '/admin/brands', icon: Award, label: language === 'ar' ? 'الماركات' : 'Brands' },
+    { path: '/admin/hero', icon: Presentation, label: language === 'ar' ? 'عروض Hero' : 'Hero Slides' },
     { path: '/admin/orders', icon: ShoppingCart, label: t('admin.orders') },
     { path: '/admin/customers', icon: Users, label: t('admin.customers') },
     { path: '/admin/reviews', icon: Star, label: language === 'ar' ? 'التقييمات' : 'Reviews' },
