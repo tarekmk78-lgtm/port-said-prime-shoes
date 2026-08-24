@@ -28,14 +28,17 @@ export function WhatsAppCheckout() {
   });
 
   useEffect(() => {
-    if (location.state?.product && location.state?.variant) {
+    // ✅ التعديل الجذري: التحقق من وجود المنتج فقط، والسماح بأن يكون variant فارغاً
+    if (location.state?.product) {
       setProduct(location.state.product);
-      setVariant(location.state.variant);
-      // ملء البيانات تلقائياً من المنتج
+      const receivedVariant = location.state.variant;
+      setVariant(receivedVariant);
+      
+      // ملء البيانات تلقائياً مع وجود قيم افتراضية آمنة
       setFormData(prev => ({
         ...prev,
-        shoe_size: location.state.variant?.size || '',
-        shoe_color: location.state.variant?.color || '',
+        shoe_size: receivedVariant?.size || 'قياس موحد',
+        shoe_color: receivedVariant?.color || 'قياسي',
       }));
     } else {
       toast.error(language === 'ar' ? 'المنتج غير موجود' : 'Product not found');
@@ -73,8 +76,12 @@ export function WhatsAppCheckout() {
       return;
     }
 
-    // رقم الواتساب من الإعدادات
-    const phoneNumber = (settings?.whatsapp_number || '+201007526286').replace(/[^0-9]/g, '');
+    // رقم الواتساب من الإعدادات (مع إزالة أي مسافات أو رموز)
+    const rawPhone = settings?.whatsapp_number || '201007526286';
+    const phoneNumber = rawPhone.replace(/[^0-9]/g, '');
+
+    // حساب السعر النهائي
+    const finalPrice = variant ? (variant.price || product.price + (variant.price_adjustment || 0)) : product.price;
 
     // بناء الرسالة
     const message = `
@@ -88,12 +95,12 @@ export function WhatsAppCheckout() {
 • العنوان: ${formData.customer_address}
 
 ━━━━━━━━━━━━━━━━━━
- *تفاصيل الطلب:*
+📦 *تفاصيل الطلب:*
 ━━━━━━━━━━━━━━━━━━
 • المنتج: ${language === 'ar' ? product.name_ar : product.name}
 • المقاس: ${formData.shoe_size}
 • اللون: ${formData.shoe_color}
-• السعر: ${variant?.price || product.price} ج.م
+• السعر: ${finalPrice} ج.م
 ${formData.notes ? `\n━━━━━━━━━━━━━━━━━━\n📝 *ملاحظات:* ${formData.notes}` : ''}
 
 🖼️ صورة المنتج:
@@ -106,7 +113,7 @@ ${product.images?.[0] || ''}
     // فتح الواتساب
     window.open(whatsappUrl, '_blank');
     
-    toast.success(language === 'ar' ? 'تم فتح الواتساب' : 'WhatsApp opened');
+    toast.success(language === 'ar' ? 'تم فتح الواتساب بنجاح' : 'WhatsApp opened successfully');
   };
 
   if (loading) {
@@ -116,6 +123,8 @@ ${product.images?.[0] || ''}
       </div>
     );
   }
+
+  const finalPrice = variant ? (variant.price || product.price + (variant.price_adjustment || 0)) : product.price;
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] py-12">
@@ -180,44 +189,44 @@ ${product.images?.[0] || ''}
                 </div>
               </div>
 
-          {/* تفاصيل الحذاء */}
-<div>
-  <h2 className="text-lg font-semibold text-ink mb-4 flex items-center gap-2">
-    <Package className="h-5 w-5 text-[#B8956E]" />
-    {language === 'ar' ? 'تفاصيل الحذاء' : 'Shoe Details'}
-  </h2>
-  <div className="grid md:grid-cols-2 gap-4">
-    {/* المقاس - حقل نصي */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {language === 'ar' ? 'مقاس الشوز *' : 'Shoe Size *'}
-      </label>
-      <input
-        type="text"
-        value={formData.shoe_size}
-        onChange={(e) => updateField('shoe_size', e.target.value)}
-        className="w-full h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-        placeholder={language === 'ar' ? 'مثال: 42' : 'Example: 42'}
-        required
-      />
-    </div>
-    
-    {/* اللون - حقل نصي */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {language === 'ar' ? 'لون الشوز *' : 'Shoe Color *'}
-      </label>
-      <input
-        type="text"
-        value={formData.shoe_color}
-        onChange={(e) => updateField('shoe_color', e.target.value)}
-        className="w-full h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-        placeholder={language === 'ar' ? 'مثال: أسود' : 'Example: Black'}
-        required
-      />
-    </div>
-  </div>
-</div>
+              {/* تفاصيل الحذاء */}
+              <div>
+                <h2 className="text-lg font-semibold text-ink mb-4 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-[#B8956E]" />
+                  {language === 'ar' ? 'تفاصيل المنتج' : 'Product Details'}
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* المقاس */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {language === 'ar' ? 'المقاس *' : 'Size *'}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.shoe_size}
+                      onChange={(e) => updateField('shoe_size', e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                      placeholder={language === 'ar' ? 'مثال: 42 أو قياس موحد' : 'Example: 42 or One Size'}
+                      required
+                    />
+                  </div>
+                  
+                  {/* اللون */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {language === 'ar' ? 'اللون *' : 'Color *'}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.shoe_color}
+                      onChange={(e) => updateField('shoe_color', e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                      placeholder={language === 'ar' ? 'مثال: أسود أو قياسي' : 'Example: Black or Standard'}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
 
               {/* ملاحظات */}
               <div>
@@ -276,7 +285,7 @@ ${product.images?.[0] || ''}
                       </p>
                     </div>
                     <p className="mt-3 font-bold text-[#B8956E] text-lg">
-                      {variant?.price || product.price} {language === 'ar' ? 'ج.م' : 'EGP'}
+                      {finalPrice} {language === 'ar' ? 'ج.م' : 'EGP'}
                     </p>
                   </div>
                 </div>
