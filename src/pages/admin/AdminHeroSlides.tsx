@@ -4,9 +4,64 @@ import { useI18n } from '../../lib/i18n';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
-import { ImageUploader } from '../../components/ImageUploader';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Edit2, Video, Image as ImageIcon, MoveUp, MoveDown } from 'lucide-react';
+
+interface ImageUploaderProps {
+  onUpload: (url: string) => void;
+  currentImage?: string;
+}
+
+function ImageUploader({ onUpload, currentImage = '' }: ImageUploaderProps) {
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState(currentImage);
+
+  useEffect(() => {
+    setPreview(currentImage);
+  }, [currentImage]);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      const { data, error } = await supabase.storage
+        .from('media')
+        .upload(fileName, file, { upsert: true });
+
+      if (error) throw error;
+
+      const publicUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/media/${data?.path ?? fileName}`;
+      setPreview(publicUrl);
+      onUpload(publicUrl);
+      toast.success('تم رفع الصورة بنجاح');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('فشل في رفع الصورة');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {preview && (
+        <div className="w-full h-40 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+          <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      <label className="inline-flex cursor-pointer items-center rounded-lg border border-[#B8956E] bg-[#B8956E] px-4 py-2 text-sm font-medium text-white hover:bg-[#a77d55]">
+        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+        {uploading ? 'جارٍ الرفع...' : 'اختر صورة'}
+      </label>
+    </div>
+  );
+}
 
 interface HeroSlide {
   id: string;
