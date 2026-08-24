@@ -22,23 +22,22 @@ export function WhatsAppCheckout() {
     customer_name: '',
     customer_phone: '',
     customer_address: '',
-    shoe_size: '',
-    shoe_color: '',
+    shoe_size: '',  // ✅ فاضي
+    shoe_color: '',  // ✅ فاضي
     notes: '',
   });
 
   useEffect(() => {
-    // ✅ التعديل الجذري: التحقق من وجود المنتج فقط، والسماح بأن يكون variant فارغاً
     if (location.state?.product) {
       setProduct(location.state.product);
       const receivedVariant = location.state.variant;
       setVariant(receivedVariant);
       
-      // ملء البيانات تلقائياً مع وجود قيم افتراضية آمنة
+      // ✅ ملء البيانات تلقائياً من المتغير لو موجود، أو نسيبها فاضية
       setFormData(prev => ({
         ...prev,
-        shoe_size: receivedVariant?.size || 'قياس موحد',
-        shoe_color: receivedVariant?.color || 'قياسي',
+        shoe_size: receivedVariant?.size || '',  // فاضي لو مفيش variant
+        shoe_color: receivedVariant?.color || '',  // فاضي لو مفيش variant
       }));
     } else {
       toast.error(language === 'ar' ? 'المنتج غير موجود' : 'Product not found');
@@ -67,25 +66,16 @@ export function WhatsAppCheckout() {
       toast.error(language === 'ar' ? 'يرجى إدخال العنوان' : 'Please enter your address');
       return;
     }
-    if (!formData.shoe_size.trim()) {
-      toast.error(language === 'ar' ? 'يرجى اختيار المقاس' : 'Please select size');
-      return;
-    }
-    if (!formData.shoe_color.trim()) {
-      toast.error(language === 'ar' ? 'يرجى اختيار اللون' : 'Please select color');
-      return;
-    }
 
-    // رقم الواتساب من الإعدادات (مع إزالة أي مسافات أو رموز)
+    // رقم الواتساب من الإعدادات
     const rawPhone = settings?.whatsapp_number || '201007526286';
     const phoneNumber = rawPhone.replace(/[^0-9]/g, '');
 
     // حساب السعر النهائي
     const finalPrice = variant ? (variant.price || product.price + (variant.price_adjustment || 0)) : product.price;
 
-    // بناء الرسالة
-    const message = `
-🛍️ *طلب جديد من الموقع*
+    // ✅ بناء الرسالة مع صورة المنتج كرابط (الواتساب مش بيقبل صور مباشرة)
+    const message = `🛍️ *طلب جديد من الموقع*
 
 ━━━━━━━━━━━━━━━━━━
 👤 *بيانات العميل:*
@@ -98,14 +88,13 @@ export function WhatsAppCheckout() {
 📦 *تفاصيل الطلب:*
 ━━━━━━━━━━━━━━━━━━
 • المنتج: ${language === 'ar' ? product.name_ar : product.name}
-• المقاس: ${formData.shoe_size}
-• اللون: ${formData.shoe_color}
+• المقاس: ${formData.shoe_size || 'غير محدد'}
+• اللون: ${formData.shoe_color || 'غير محدد'}
 • السعر: ${finalPrice} ج.م
 ${formData.notes ? `\n━━━━━━━━━━━━━━━━━━\n📝 *ملاحظات:* ${formData.notes}` : ''}
 
-🖼️ صورة المنتج:
-${product.images?.[0] || ''}
-    `.trim();
+🖼️ *صورة المنتج:*
+${product.images?.[0] || ''}`;
 
     // إنشاء رابط الواتساب
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
@@ -189,40 +178,38 @@ ${product.images?.[0] || ''}
                 </div>
               </div>
 
-              {/* تفاصيل الحذاء */}
+              {/* تفاصيل المنتج */}
               <div>
                 <h2 className="text-lg font-semibold text-ink mb-4 flex items-center gap-2">
                   <Package className="h-5 w-5 text-[#B8956E]" />
                   {language === 'ar' ? 'تفاصيل المنتج' : 'Product Details'}
                 </h2>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {/* المقاس */}
+                  {/* المقاس - فاضي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {language === 'ar' ? 'المقاس *' : 'Size *'}
+                      {language === 'ar' ? 'المقاس' : 'Size'}
                     </label>
                     <input
                       type="text"
                       value={formData.shoe_size}
                       onChange={(e) => updateField('shoe_size', e.target.value)}
                       className="w-full h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-                      placeholder={language === 'ar' ? 'مثال: 42 أو قياس موحد' : 'Example: 42 or One Size'}
-                      required
+                      placeholder={language === 'ar' ? 'مثال: 42' : 'Example: 42'}
                     />
                   </div>
                   
-                  {/* اللون */}
+                  {/* اللون - فاضي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {language === 'ar' ? 'اللون *' : 'Color *'}
+                      {language === 'ar' ? 'اللون' : 'Color'}
                     </label>
                     <input
                       type="text"
                       value={formData.shoe_color}
                       onChange={(e) => updateField('shoe_color', e.target.value)}
                       className="w-full h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-                      placeholder={language === 'ar' ? 'مثال: أسود أو قياسي' : 'Example: Black or Standard'}
-                      required
+                      placeholder={language === 'ar' ? 'مثال: أسود' : 'Example: Black'}
                     />
                   </div>
                 </div>
@@ -244,7 +231,7 @@ ${product.images?.[0] || ''}
               <Button 
                 onClick={sendToWhatsApp}
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
-                disabled={!formData.customer_name || !formData.customer_phone || !formData.customer_address || !formData.shoe_size || !formData.shoe_color}
+                disabled={!formData.customer_name || !formData.customer_phone || !formData.customer_address}
               >
                 <MessageCircle className="h-5 w-5 mr-2" />
                 {language === 'ar' ? 'إرسال الطلب عبر الواتساب' : 'Send Order via WhatsApp'}
@@ -252,7 +239,7 @@ ${product.images?.[0] || ''}
             </div>
           </div>
 
-          {/* ملخص الطلب */}
+          {/* ملخص الطلب - مع صورة المنتج */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
               <h2 className="text-lg font-semibold text-ink mb-4 flex items-center gap-2">
@@ -262,6 +249,7 @@ ${product.images?.[0] || ''}
               
               {product && (
                 <div className="space-y-4">
+                  {/* ✅ صورة المنتج فعلية */}
                   <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
                     <img
                       src={product.images?.[0] || 'https://placehold.co/300'}
