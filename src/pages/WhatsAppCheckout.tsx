@@ -67,14 +67,14 @@ export function WhatsAppCheckout() {
       return;
     }
 
-    // رقم الواتساب من الإعدادات
     const rawPhone = settings?.whatsapp_number || '201007526286';
     const phoneNumber = rawPhone.replace(/[^0-9]/g, '');
 
-    // حساب السعر النهائي
     const finalPrice = variant ? (variant.price || product.price + (variant.price_adjustment || 0)) : product.price;
+    const productImage = product.images?.[0] || '';
 
-    // ✅ بناء الرسالة مع صورة المنتج كرابط (الواتساب مش بيقبل صور مباشرة)
+    // ✅ ترتيب الرسالة عشان المعاينة تظهر تلقائياً
+    // الرابط لازم يكون في آخر سطر منفصل تماماً
     const message = `🛍️ *طلب جديد من الموقع*
 
 ━━━━━━━━━━━━━━━━━━
@@ -91,18 +91,18 @@ export function WhatsAppCheckout() {
 • المقاس: ${formData.shoe_size || 'غير محدد'}
 • اللون: ${formData.shoe_color || 'غير محدد'}
 • السعر: ${finalPrice} ج.م
-${formData.notes ? `\n━━━━━━━━━━━━━━━━━━\n📝 *ملاحظات:* ${formData.notes}` : ''}
+${formData.notes ? `\n━━━━━━━━━━━━━━━━━━\n *ملاحظات:* ${formData.notes}` : ''}
 
+━━━━━━━━━━━━━━━━━━
 🖼️ *صورة المنتج:*
-${product.images?.[0] || ''}`;
+${productImage}`;
 
-    // إنشاء رابط الواتساب
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    // ✅ استخدام api.whatsapp.com بدل wa.me (أحياناً أفضل للمعاينة)
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
     
-    // فتح الواتساب
     window.open(whatsappUrl, '_blank');
     
-    toast.success(language === 'ar' ? 'تم فتح الواتساب بنجاح' : 'WhatsApp opened successfully');
+    toast.success(language === 'ar' ? 'تم فتح الواتساب' : 'WhatsApp opened');
   };
 
   if (loading) {
