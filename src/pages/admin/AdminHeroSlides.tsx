@@ -71,6 +71,8 @@ interface HeroSlide {
   subtitle_en: string;
   media_type: 'image' | 'video';
   media_url: string;
+  media_url_ar?: string;
+  media_url_en?: string;
   video_url: string;
   button_text_ar: string;
   button_text_en: string;
@@ -93,6 +95,8 @@ export function AdminHeroSlides() {
     subtitle_en: '',
     media_type: 'image',
     media_url: '',
+    media_url_ar: '',
+    media_url_en: '',
     video_url: '',
     button_text_ar: '',
     button_text_en: '',
@@ -185,7 +189,6 @@ export function AdminHeroSlides() {
 
     setSlides(updatedSlides);
     
-    // تحديث في قاعدة البيانات
     await Promise.all(
       updatedSlides.map((slide) =>
         supabase
@@ -228,6 +231,8 @@ export function AdminHeroSlides() {
       subtitle_en: '',
       media_type: 'image',
       media_url: '',
+      media_url_ar: '',
+      media_url_en: '',
       video_url: '',
       button_text_ar: '',
       button_text_en: '',
@@ -239,8 +244,12 @@ export function AdminHeroSlides() {
     setShowForm(false);
   };
 
-  const handleMediaUpload = (url: string) => {
-    setFormData({ ...formData, media_url: url });
+  const handleMediaUploadAr = (url: string) => {
+    setFormData({ ...formData, media_url_ar: url });
+  };
+
+  const handleMediaUploadEn = (url: string) => {
+    setFormData({ ...formData, media_url_en: url });
   };
 
   if (loading) {
@@ -335,10 +344,34 @@ export function AdminHeroSlides() {
             )}
           </div>
 
+          {/* ✅ قسم رفع الصورتين (عربي وإنجليزي) */}
           {formData.media_type === 'image' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">صورة العرض</label>
-              <ImageUploader onUpload={handleMediaUpload} currentImage={formData.media_url || ''} />
+            <div className="space-y-6">
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  🇸🇦 صورة العرض (العربية) - الحذاء على اليسار، مساحة فارغة على اليمين
+                </label>
+                <ImageUploader 
+                  onUpload={handleMediaUploadAr} 
+                  currentImage={formData.media_url_ar || ''} 
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                   نصيحة: استخدم صورة فيها الحذاء على اليسار ومساحة فارغة على اليمين للنص العربي
+                </p>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  🇧 صورة العرض (English) - الحذاء على اليمين، مساحة فارغة على اليسار
+                </label>
+                <ImageUploader 
+                  onUpload={handleMediaUploadEn} 
+                  currentImage={formData.media_url_en || ''} 
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Tip: Use an image with shoes on the right and empty space on the left for English text
+                </p>
+              </div>
             </div>
           )}
 
@@ -380,7 +413,7 @@ export function AdminHeroSlides() {
               {/* المعاينة */}
               <div className="w-32 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                 {slide.media_type === 'image' ? (
-                  <img src={slide.media_url} alt="Slide" className="w-full h-full object-cover" />
+                  <img src={slide.media_url_ar || slide.media_url} alt="Slide AR" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gray-800">
                     <Video className="h-8 w-8 text-white" />

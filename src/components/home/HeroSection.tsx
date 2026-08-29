@@ -12,6 +12,8 @@ interface HeroSlide {
   subtitle_en: string;
   media_type: 'image' | 'video';
   media_url: string;
+  media_url_ar?: string; // ✅ إضافة صورة النسخة العربية
+  media_url_en?: string; // ✅ إضافة صورة النسخة الإنجليزية
   video_url: string;
   button_text_ar: string;
   button_text_en: string;
@@ -78,6 +80,13 @@ export function HeroSection() {
     return `https://player.vimeo.com/video/${videoId}?autoplay=1&muted=1&loop=1`;
   };
 
+  // ✅ الدالة الذكية لاختيار الصورة بناءً على اللغة
+  const getMediaUrl = (slide: HeroSlide) => {
+    if (language === 'ar' && slide.media_url_ar) return slide.media_url_ar;
+    if (language === 'en' && slide.media_url_en) return slide.media_url_en;
+    return slide.media_url; // Fallback للصورة الافتراضية لو لم توجد صورة مخصصة
+  };
+
   if (loading) {
     return (
       <div className="w-full h-[250px] sm:h-[300px] md:h-[400px] lg:h-[500px] xl:h-[600px] bg-gray-200 animate-pulse" />
@@ -101,76 +110,81 @@ export function HeroSection() {
 
   return (
     <div className="relative w-full h-[250px] sm:h-[300px] md:h-[400px] lg:h-[500px] xl:h-[600px] overflow-hidden group">
-      {slides.map((slide, index) => (
-        <div
-          key={slide.id}
-          className={`absolute inset-0 transition-opacity duration-1000 ${
-            index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-        >
-          {/* Media */}
-          <div className="absolute inset-0">
-            {slide.media_type === 'image' ? (
-              <img
-                src={slide.media_url}
-                alt={language === 'ar' ? slide.title_ar : slide.title_en}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full">
-                {slide.video_url?.includes('youtube') ? (
-                  <iframe
-                    src={getYouTubeEmbedUrl(slide.video_url)}
-                    className="w-full h-full"
-                    frameBorder="0"
-                    allow="autoplay; muted"
-                    title="Hero Video"
-                  />
-                ) : slide.video_url?.includes('vimeo') ? (
-                  <iframe
-                    src={getVimeoEmbedUrl(slide.video_url)}
-                    className="w-full h-full"
-                    frameBorder="0"
-                    allow="autoplay; muted"
-                    title="Hero Video"
-                  />
-                ) : null}
-              </div>
-            )}
-            
-            {/* ✅ Gradient ذكي حسب اللغة - يبرز النص */}
-            <div 
-              className={`absolute inset-0 ${
-                language === 'ar' 
-                  ? 'bg-gradient-to-l from-black/80 via-black/50 to-transparent'  // عربي: gradient من اليمين
-                  : 'bg-gradient-to-r from-black/80 via-black/50 to-transparent'  // إنجليزي: gradient من اليسار
-              }`}
-            />
-          </div>
+      {slides.map((slide, index) => {
+        // ✅ تحديد الرابط الصحيح للصورة هنا
+        const mediaUrl = getMediaUrl(slide);
 
-          {/* Content */}
-          <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex items-center">
-            <div className={`text-white max-w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl ${
-              language === 'ar' ? 'text-right ml-auto' : 'text-left mr-auto'
-            }`}>
-              <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight drop-shadow-2xl">
-                {language === 'ar' ? slide.title_ar : slide.title_en || slide.title_ar}
-              </h1>
-              <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mb-3 sm:mb-4 md:mb-6 lg:mb-8 line-clamp-2 drop-shadow-lg">
-                {language === 'ar' ? slide.subtitle_ar : slide.subtitle_en || slide.subtitle_ar}
-              </p>
-              {slide.button_link && (
-                <Link
-                  to={slide.button_link}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 bg-[#B8956E] text-white px-4 py-2 sm:px-6 sm:py-3 md:px-8 md:py-4 rounded-lg font-semibold text-xs sm:text-sm md:text-base hover:bg-[#9e7d58] transition-colors shadow-lg"
-                >
-                  {language === 'ar' ? slide.button_text_ar : slide.button_text_en || slide.button_text_ar}
-                </Link>
+        return (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 transition-opacity duration-1000 ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            {/* Media */}
+            <div className="absolute inset-0">
+              {slide.media_type === 'image' ? (
+                <img
+                  src={mediaUrl} // ✅ استخدام الرابط الديناميكي
+                  alt={language === 'ar' ? slide.title_ar : slide.title_en}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full">
+                  {slide.video_url?.includes('youtube') ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(slide.video_url)}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="autoplay; muted"
+                      title="Hero Video"
+                    />
+                  ) : slide.video_url?.includes('vimeo') ? (
+                    <iframe
+                      src={getVimeoEmbedUrl(slide.video_url)}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="autoplay; muted"
+                      title="Hero Video"
+                    />
+                  ) : null}
+                </div>
               )}
+              
+              {/* ✅ Gradient ذكي حسب اللغة - يبرز النص */}
+              <div 
+                className={`absolute inset-0 ${
+                  language === 'ar' 
+                    ? 'bg-gradient-to-l from-black/80 via-black/50 to-transparent'  // عربي: gradient من اليمين
+                    : 'bg-gradient-to-r from-black/80 via-black/50 to-transparent'  // إنجليزي: gradient من اليسار
+                }`}
+              />
+            </div>
+
+            {/* Content */}
+            <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex items-center">
+              <div className={`text-white max-w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl ${
+                language === 'ar' ? 'text-right ml-auto' : 'text-left mr-auto'
+              }`}>
+                <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight drop-shadow-2xl">
+                  {language === 'ar' ? slide.title_ar : slide.title_en || slide.title_ar}
+                </h1>
+                <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mb-3 sm:mb-4 md:mb-6 lg:mb-8 line-clamp-2 drop-shadow-lg">
+                  {language === 'ar' ? slide.subtitle_ar : slide.subtitle_en || slide.subtitle_ar}
+                </p>
+                {slide.button_link && (
+                  <Link
+                    to={slide.button_link}
+                    className="inline-flex items-center gap-1.5 sm:gap-2 bg-[#B8956E] text-white px-4 py-2 sm:px-6 sm:py-3 md:px-8 md:py-4 rounded-lg font-semibold text-xs sm:text-sm md:text-base hover:bg-[#9e7d58] transition-colors shadow-lg"
+                  >
+                    {language === 'ar' ? slide.button_text_ar : slide.button_text_en || slide.button_text_ar}
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Navigation Arrows */}
       {slides.length > 1 && (
