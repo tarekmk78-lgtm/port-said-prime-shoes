@@ -1,192 +1,261 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useI18n } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
-import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import toast from 'react-hot-toast';
+import { Plus, Trash2, Edit2, Award } from 'lucide-react';
 
-interface HeroSlide {
+interface Brand {
   id: string;
-  title_ar: string;
-  title_en: string;
-  subtitle_ar: string;
-  subtitle_en: string;
-  description?: string;
-  description_ar?: string;
-  image_url: string;
-  image_url_ar?: string; // ✅ صورة النسخة العربية
-  image_url_en?: string; // ✅ صورة النسخة الإنجليزية
-  btn_ar?: string;
-  btn_en?: string;
-  link?: string;
+  name: string;
+  name_ar: string;
+  name_en: string;
+  slug: string;
   is_active: boolean;
-  sort_order: number;
 }
 
-export function HeroSection() {
-  const { language } = useI18n();
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
-  const [currentSlide, setCurrentSlide] = useState(0);
+export function AdminBrands() {
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    name_ar: '',
+    name_en: '',
+    is_active: true,
+  });
 
   useEffect(() => {
-    async function fetchSlides() {
-      try {
-        const { data, error } = await supabase
-          .from('hero_slides')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-        
-        if (!error && data && data.length > 0) {
-          setSlides(data);
-        } else {
-          setSlides([
-            {
-              id: '1',
-              title_ar: 'الفخامة تبدأ من خطوة',
-              title_en: 'TIMELESS ELEGANCE',
-              subtitle_ar: 'مجموعة صيف 2026',
-              subtitle_en: 'Summer Collection 2026',
-              description_ar: 'اكتشف التشكيلة الجديدة',
-              description: 'Discover our new collection',
-              image_url: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=1920&q=80',
-              btn_ar: 'تسوق الآن',
-              btn_en: 'Shop Now',
-              link: '/shop',
-              is_active: true,
-              sort_order: 0,
-            },
-          ]);
-        }
-      } catch (err) {
-        console.error('Error:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSlides();
+    fetchBrands();
   }, []);
 
-  useEffect(() => {
-    if (slides.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [slides.length]);
+  const fetchBrands = async () => {
+    try {
+      console.log('Fetching brands from Supabase...');
+      const { data, error } = await supabase
+        .from('brands')
+        .select('*')
+        .order('name', { ascending: true });
 
-  if (loading || slides.length === 0) {
-    return <div className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-gray-950" />;
-  }
-
-  const current = slides[currentSlide];
-  const isAr = language === 'ar';
-  
-  // ✅ دالة لاختيار الصورة الصحيحة بناءً على اللغة
-  const getImageUrl = (slide: HeroSlide) => {
-    if (isAr && slide.image_url_ar) return slide.image_url_ar;
-    if (!isAr && slide.image_url_en) return slide.image_url_en;
-    return slide.image_url; // Fallback للصورة الافتراضية
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Brands data:', data);
+      setBrands(data || []);
+      
+      if (!data || data.length === 0) {
+        console.warn('No brands found in database');
+      }
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+      toast.error('فشل في تحميل الماركات: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const title = isAr ? current.title_ar : current.title_en;
-  const subtitle = isAr ? current.subtitle_ar : current.subtitle_en;
-  const description = isAr ? (current.description_ar || '') : (current.description || '');
-  const buttonText = isAr ? (current.btn_ar || 'تسوق الآن') : (current.btn_en || 'Shop Now');
-  const buttonLink = current.link || '/shop';
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const slug = formData.name_en.toLowerCase().replace(/\s+/g, '-') || 
+                 formData.name.toLowerCase().replace(/\s+/g, '-');
+
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from('brands')
+          .update({
+            name: formData.name,
+            name_ar: formData.name_ar,
+            name_en: formData.name_en,
+            is_active: formData.is_active,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingId);
+          
+        if (error) throw error;
+        toast.success('تم تحديث الماركة بنجاح');
+      } else {
+        const { error } = await supabase
+          .from('brands')
+          .insert([{
+            name: formData.name,
+            name_ar: formData.name_ar,
+            name_en: formData.name_en,
+            slug: slug,
+            is_active: formData.is_active,
+            created_at: new Date().toISOString()
+          }]);
+          
+        if (error) throw error;
+        toast.success('تم إضافة الماركة بنجاح');
+      }
+      
+      setShowForm(false);
+      setEditingId(null);
+      setFormData({ name: '', name_ar: '', name_en: '', is_active: true });
+      fetchBrands();
+    } catch (error) {
+      console.error('Error saving brand:', error);
+      toast.error('فشل في حفظ الماركة');
+    }
+  };
+
+  const handleEdit = (brand: Brand) => {
+    setFormData({
+      name: brand.name,
+      name_ar: brand.name_ar,
+      name_en: brand.name_en,
+      is_active: brand.is_active,
+    });
+    setEditingId(brand.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الماركة؟')) return;
+    
+    try {
+      const { error } = await supabase.from('brands').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('تم حذف الماركة بنجاح');
+      fetchBrands();
+    } catch (error) {
+      console.error('Error deleting brand:', error);
+      toast.error('فشل في حذف الماركة');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8956E]"></div>
+      </div>
+    );
+  }
 
   return (
-    <section className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-black overflow-hidden select-none">
-      <div className="absolute inset-0 w-full h-full">
-        {slides.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide ? 'opacity-100 z-0' : 'opacity-0 z-0'
-            }`}
-          >
-            <img
-              src={getImageUrl(slide)} // ✅ استخدام الدالة لاختيار الصورة
-              alt={`Hero Slide ${index + 1}`}
-              className="w-full h-full object-cover object-center pointer-events-none"
-            />
-            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/50 md:bg-gradient-to-b md:from-black/20 ${
-              isAr 
-                ? 'md:bg-gradient-to-l md:from-black/85 md:via-black/40 md:to-transparent' 
-                : 'md:bg-gradient-to-r md:from-black/85 md:via-black/40 md:to-transparent'
-            }`} />
-          </div>
-        ))}
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">إدارة الماركات</h1>
+        <Button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2">
+          <Plus className="h-5 w-5" />
+          {showForm ? 'إلغاء' : 'إضافة ماركة جديدة'}
+        </Button>
       </div>
 
-      <div className="absolute top-0 left-0 right-0 z-10 bg-black/30 backdrop-blur-[2px] py-2 border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-center gap-4 text-white/90 text-[10px] md:text-xs tracking-wider">
-            <span>شحن مجاني لجميع الطلبات | ضمان استرجاع 14 يوم</span>
-          </div>
-        </div>
-      </div>
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+          <h2 className="text-xl font-semibold mb-4">
+            {editingId ? 'تعديل الماركة' : 'إضافة ماركة جديدة'}
+          </h2>
 
-      <div className="relative h-full max-w-7xl mx-auto px-4 md:px-12 flex items-center pt-8 z-10">
-        <div className={`w-full md:w-1/2 ${isAr ? 'text-right' : 'text-left'}`}>
-          <p className="text-amber-500 text-[11px] md:text-sm font-bold uppercase mb-1 md:mb-2 tracking-widest">
-            {subtitle}
-          </p>
+          <Input
+            label="الاسم (عربي)"
+            value={formData.name_ar}
+            onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })}
+            required
+            placeholder="مثال: نايكي"
+          />
+          
+          <Input
+            label="الاسم (English)"
+            value={formData.name_en}
+            onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
+            required
+            placeholder="Example: Nike"
+          />
+          
+          <Input
+            label="الاسم العام"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+            placeholder="Nike"
+          />
 
-          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-2 md:mb-3 leading-tight drop-shadow-md">
-            {title}
-          </h1>
-
-          <p className="hidden sm:block text-gray-300 text-xs md:text-base mb-5 md:mb-6 leading-relaxed max-w-md opacity-95">
-            {description}
-          </p>
-
-          <div className="flex flex-wrap gap-2 md:gap-3">
-            <Link
-              to={buttonLink}
-              className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-amber-600 text-white text-xs md:text-sm rounded-md font-bold hover:bg-amber-700 transition-all shadow-lg active:scale-95"
-            >
-              <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              {buttonText}
-            </Link>
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-white/10 backdrop-blur-md text-white text-xs md:text-sm border border-white/20 rounded-md font-bold hover:bg-white/20 transition-all active:scale-95"
-            >
-              {isAr ? 'استكشف المجموعة' : 'Explore Collection'}
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {slides.length > 1 && (
-        <>
-          <button
-            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all transform active:scale-90"
-          >
-            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
-          <button
-            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all transform active:scale-90"
-          >
-            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
-
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === currentSlide ? 'bg-amber-500 w-6' : 'bg-white/30 hover:bg-white/50 w-1.5'
-                }`}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              نشط
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="w-4 h-4"
               />
-            ))}
+              <span>ماركة نشطة</span>
+            </label>
           </div>
-        </>
+
+          <div className="flex gap-4">
+            <Button type="submit" className="flex-1">
+              {editingId ? 'تحديث' : 'إضافة'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => {
+              setShowForm(false);
+              setEditingId(null);
+            }}>
+              إلغاء
+            </Button>
+          </div>
+        </form>
       )}
-    </section>
+
+      <div className="grid gap-4">
+        {brands.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-xl">
+            <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">لا توجد ماركات حالياً</p>
+            <Button onClick={() => setShowForm(true)} className="mt-4">
+              أضف أول ماركة
+            </Button>
+          </div>
+        ) : (
+          brands.map((brand) => (
+            <div key={brand.id} className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <Award className="h-6 w-6 text-[#B8956E]" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">
+                      {brand.name_ar} / {brand.name_en}
+                    </h3>
+                    <p className="text-sm text-gray-500">Slug: {brand.slug}</p>
+                    <span className={`inline-block mt-1 px-2 py-1 rounded text-xs ${
+                      brand.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {brand.is_active ? 'نشط' : 'غير نشط'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEdit(brand)}
+                    className="p-2 rounded-lg hover:bg-blue-50 text-blue-600"
+                  >
+                    <Edit2 className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(brand.id)}
+                    className="p-2 rounded-lg hover:bg-red-50 text-red-600"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
