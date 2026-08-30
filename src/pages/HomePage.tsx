@@ -30,12 +30,13 @@ export function HomePage() {
           .eq('is_active', true)
           .order('sort_order', { ascending: true });
 
-        const { data: newArrivalsData } = await supabase
-          .from('products')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(10);
+       const { data: newArrivalsData } = await supabase
+  .from('products')
+  .select('*')
+  .eq('is_active', true)
+  .eq('is_new', true) // ✅ جلب المنتجات الجديدة فقط
+  .order('created_at', { ascending: false })
+  .limit(10);
 
         // ✅ جلب الماركات من قاعدة البيانات
         const { data: brandsData } = await supabase
