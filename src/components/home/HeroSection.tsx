@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, ShoppingBag } from 'lucide-react';
 
 interface HeroSlide {
   id: string;
@@ -12,12 +12,14 @@ interface HeroSlide {
   subtitle_en: string;
   media_type: 'image' | 'video';
   media_url: string;
-  media_url_ar?: string; // ✅ إضافة صورة النسخة العربية
-  media_url_en?: string; // ✅ إضافة صورة النسخة الإنجليزية
+  media_url_ar?: string;
+  media_url_en?: string;
   video_url: string;
   button_text_ar: string;
   button_text_en: string;
   button_link: string;
+  display_order: number;
+  is_active: boolean;
 }
 
 export function HeroSection() {
@@ -33,11 +35,9 @@ export function HeroSection() {
 
   useEffect(() => {
     if (slides.length <= 1 || !isPlaying) return;
-
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
-
+    }, 6000);
     return () => clearInterval(interval);
   }, [slides.length, isPlaying]);
 
@@ -58,17 +58,9 @@ export function HeroSection() {
     }
   };
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-  };
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  const togglePlay = () => setIsPlaying(!isPlaying);
 
   const getYouTubeEmbedUrl = (url: string) => {
     const videoId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
@@ -84,18 +76,16 @@ export function HeroSection() {
   const getMediaUrl = (slide: HeroSlide) => {
     if (language === 'ar' && slide.media_url_ar) return slide.media_url_ar;
     if (language === 'en' && slide.media_url_en) return slide.media_url_en;
-    return slide.media_url; // Fallback للصورة الافتراضية لو لم توجد صورة مخصصة
+    return slide.media_url;
   };
 
   if (loading) {
-    return (
-      <div className="w-full h-[250px] sm:h-[300px] md:h-[400px] lg:h-[500px] xl:h-[600px] bg-gray-200 animate-pulse" />
-    );
+    return <div className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-gray-950" />;
   }
 
   if (slides.length === 0) {
     return (
-      <div className="w-full h-[250px] sm:h-[300px] md:h-[400px] lg:h-[500px] xl:h-[600px] bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
+      <div className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
         <div className="text-center text-white px-4">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
             {language === 'ar' ? 'مرحباً بكم' : 'Welcome'}
@@ -108,132 +98,142 @@ export function HeroSection() {
     );
   }
 
-  return (
-    <div className="relative w-full h-[250px] sm:h-[300px] md:h-[400px] lg:h-[500px] xl:h-[600px] overflow-hidden group">
-      {slides.map((slide, index) => {
-        // ✅ تحديد الرابط الصحيح للصورة هنا
-        const mediaUrl = getMediaUrl(slide);
+  const isAr = language === 'ar';
 
-        return (
+  return (
+    <section className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-black overflow-hidden select-none">
+      {/* Slides */}
+      <div className="absolute inset-0 w-full h-full">
+        {slides.map((slide, index) => (
           <div
             key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ${
-              index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              index === currentSlide ? 'opacity-100 z-0' : 'opacity-0 z-0'
             }`}
           >
             {/* Media */}
-            <div className="absolute inset-0">
-              {slide.media_type === 'image' ? (
-                <img
-                  src={mediaUrl} // ✅ استخدام الرابط الديناميكي
-                  alt={language === 'ar' ? slide.title_ar : slide.title_en}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full">
-                  {slide.video_url?.includes('youtube') ? (
-                    <iframe
-                      src={getYouTubeEmbedUrl(slide.video_url)}
-                      className="w-full h-full"
-                      frameBorder="0"
-                      allow="autoplay; muted"
-                      title="Hero Video"
-                    />
-                  ) : slide.video_url?.includes('vimeo') ? (
-                    <iframe
-                      src={getVimeoEmbedUrl(slide.video_url)}
-                      className="w-full h-full"
-                      frameBorder="0"
-                      allow="autoplay; muted"
-                      title="Hero Video"
-                    />
-                  ) : null}
-                </div>
-              )}
-              
-              {/* ✅ Gradient ذكي حسب اللغة - يبرز النص */}
-              <div 
-                className={`absolute inset-0 ${
-                  language === 'ar' 
-                    ? 'bg-gradient-to-l from-black/80 via-black/50 to-transparent'  // عربي: gradient من اليمين
-                    : 'bg-gradient-to-r from-black/80 via-black/50 to-transparent'  // إنجليزي: gradient من اليسار
-                }`}
+            {slide.media_type === 'image' ? (
+              <img
+                src={getMediaUrl(slide)}
+                alt={`Hero Slide ${index + 1}`}
+                className="w-full h-full object-cover object-center pointer-events-none"
               />
-            </div>
-
-            {/* Content */}
-            <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex items-center">
-              <div className={`text-white max-w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl ${
-                language === 'ar' ? 'text-right ml-auto' : 'text-left mr-auto'
-              }`}>
-                <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight drop-shadow-2xl">
-                  {language === 'ar' ? slide.title_ar : slide.title_en || slide.title_ar}
-                </h1>
-                <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mb-3 sm:mb-4 md:mb-6 lg:mb-8 line-clamp-2 drop-shadow-lg">
-                  {language === 'ar' ? slide.subtitle_ar : slide.subtitle_en || slide.subtitle_ar}
-                </p>
-                {slide.button_link && (
-                  <Link
-                    to={slide.button_link}
-                    className="inline-flex items-center gap-1.5 sm:gap-2 bg-[#B8956E] text-white px-4 py-2 sm:px-6 sm:py-3 md:px-8 md:py-4 rounded-lg font-semibold text-xs sm:text-sm md:text-base hover:bg-[#9e7d58] transition-colors shadow-lg"
-                  >
-                    {language === 'ar' ? slide.button_text_ar : slide.button_text_en || slide.button_text_ar}
-                  </Link>
-                )}
+            ) : (
+              <div className="w-full h-full">
+                {slide.video_url?.includes('youtube') ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(slide.video_url)}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="autoplay; muted"
+                    title="Hero Video"
+                  />
+                ) : slide.video_url?.includes('vimeo') ? (
+                  <iframe
+                    src={getVimeoEmbedUrl(slide.video_url)}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="autoplay; muted"
+                    title="Hero Video"
+                  />
+                ) : null}
               </div>
-            </div>
+            )}
+            
+            {/* ✅ Gradient ذكي حسب اللغة */}
+            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/50 md:bg-gradient-to-b md:from-black/20 ${
+              isAr 
+                ? 'md:bg-gradient-to-l md:from-black/85 md:via-black/40 md:to-transparent' 
+                : 'md:bg-gradient-to-r md:from-black/85 md:via-black/40 md:to-transparent'
+            }`} />
           </div>
-        );
-      })}
+        ))}
+      </div>
+
+      {/* ✅ شريط علوي - شحن مجاني */}
+      <div className="absolute top-0 left-0 right-0 z-10 bg-black/30 backdrop-blur-[2px] py-2 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="flex items-center justify-center gap-4 text-white/90 text-[10px] md:text-xs tracking-wider">
+            <span>
+              {isAr ? 'شحن مجاني لجميع الطلبات | ضمان استرجاع 14 يوم' : 'Free Shipping on All Orders | 14-Day Return Guarantee'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="relative h-full max-w-7xl mx-auto px-4 md:px-12 flex items-center pt-8 z-10">
+        <div className={`w-full md:w-1/2 ${isAr ? 'text-right' : 'text-left'}`}>
+          <p className="text-amber-500 text-[11px] md:text-sm font-bold uppercase mb-1 md:mb-2 tracking-widest">
+            {isAr ? slides[currentSlide].subtitle_ar : slides[currentSlide].subtitle_en}
+          </p>
+
+          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-2 md:mb-3 leading-tight drop-shadow-md">
+            {isAr ? slides[currentSlide].title_ar : slides[currentSlide].title_en}
+          </h1>
+
+          <div className="flex flex-wrap gap-2 md:gap-3 mt-4 md:mt-6">
+            {slides[currentSlide].button_link && (
+              <Link
+                to={slides[currentSlide].button_link}
+                className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-amber-600 text-white text-xs md:text-sm rounded-md font-bold hover:bg-amber-700 transition-all shadow-lg active:scale-95"
+              >
+                <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                {isAr ? slides[currentSlide].button_text_ar : slides[currentSlide].button_text_en}
+              </Link>
+            )}
+            <Link
+              to="/shop"
+              className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-white/10 backdrop-blur-md text-white text-xs md:text-sm border border-white/20 rounded-md font-bold hover:bg-white/20 transition-all active:scale-95"
+            >
+              {isAr ? 'استكشف المجموعة' : 'Explore Collection'}
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {/* Navigation Arrows */}
       {slides.length > 1 && (
         <>
           <button
             onClick={prevSlide}
-            className="hidden md:flex absolute left-4 lg:left-8 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur rounded-full items-center justify-center hover:bg-white/30 transition-colors opacity-0 group-hover:opacity-100"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all transform active:scale-90"
           >
-            <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-white" />
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
           </button>
           <button
             onClick={nextSlide}
-            className="hidden md:flex absolute right-4 lg:right-8 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur rounded-full items-center justify-center hover:bg-white/30 transition-colors opacity-0 group-hover:opacity-100"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all transform active:scale-90"
           >
-            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-white" />
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  index === currentSlide ? 'bg-amber-500 w-6' : 'bg-white/30 hover:bg-white/50 w-1.5'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Play/Pause Button */}
+          <button
+            onClick={togglePlay}
+            className="md:hidden absolute bottom-3 right-3 sm:right-4 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all"
+          >
+            {isPlaying ? (
+              <Pause className="w-4 h-4" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
           </button>
         </>
       )}
-
-      {/* Dots Indicator */}
-      {slides.length > 1 && (
-        <div className="absolute bottom-3 sm:bottom-4 md:bottom-6 lg:bottom-8 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`h-1.5 sm:h-2 rounded-full transition-all ${
-                index === currentSlide 
-                  ? 'bg-white w-6 sm:w-8 md:w-10' 
-                  : 'bg-white/50 w-1.5 sm:w-2'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Play/Pause Button */}
-      {slides.length > 1 && (
-        <button
-          onClick={togglePlay}
-          className="md:hidden absolute bottom-3 sm:bottom-4 right-3 sm:right-4 w-8 h-8 bg-white/20 backdrop-blur rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-        >
-          {isPlaying ? (
-            <Pause className="h-4 w-4 text-white" />
-          ) : (
-            <Play className="h-4 w-4 text-white" />
-          )}
-        </button>
-      )}
-    </div>
+    </section>
   );
 }

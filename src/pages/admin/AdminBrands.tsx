@@ -13,6 +13,8 @@ interface HeroSlide {
   description?: string;
   description_ar?: string;
   image_url: string;
+  image_url_ar?: string; // ✅ صورة النسخة العربية
+  image_url_en?: string; // ✅ صورة النسخة الإنجليزية
   btn_ar?: string;
   btn_en?: string;
   link?: string;
@@ -78,12 +80,20 @@ export function HeroSection() {
   }
 
   const current = slides[currentSlide];
-  const title = language === 'ar' ? current.title_ar : current.title_en;
-  const subtitle = language === 'ar' ? current.subtitle_ar : current.subtitle_en;
-  const description = language === 'ar' ? (current.description_ar || '') : (current.description || '');
-  const buttonText = language === 'ar' ? (current.btn_ar || 'تسوق الآن') : (current.btn_en || 'Shop Now');
-  const buttonLink = current.link || '/shop';
   const isAr = language === 'ar';
+  
+  // ✅ دالة لاختيار الصورة الصحيحة بناءً على اللغة
+  const getImageUrl = (slide: HeroSlide) => {
+    if (isAr && slide.image_url_ar) return slide.image_url_ar;
+    if (!isAr && slide.image_url_en) return slide.image_url_en;
+    return slide.image_url; // Fallback للصورة الافتراضية
+  };
+
+  const title = isAr ? current.title_ar : current.title_en;
+  const subtitle = isAr ? current.subtitle_ar : current.subtitle_en;
+  const description = isAr ? (current.description_ar || '') : (current.description || '');
+  const buttonText = isAr ? (current.btn_ar || 'تسوق الآن') : (current.btn_en || 'Shop Now');
+  const buttonLink = current.link || '/shop';
 
   return (
     <section className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-black overflow-hidden select-none">
@@ -96,7 +106,7 @@ export function HeroSection() {
             }`}
           >
             <img
-              src={slide.image_url}
+              src={getImageUrl(slide)} // ✅ استخدام الدالة لاختيار الصورة
               alt={`Hero Slide ${index + 1}`}
               className="w-full h-full object-cover object-center pointer-events-none"
             />
