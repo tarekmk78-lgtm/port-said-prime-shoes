@@ -35,8 +35,7 @@ export function AdminLayout() {
     { path: '/admin/orders', icon: ShoppingCart, label: t('admin.orders') },
     { path: '/admin/customers', icon: Users, label: t('admin.customers') },
     { path: '/admin/reviews', icon: Star, label: language === 'ar' ? 'التقييمات' : 'Reviews' },
-    { path: '/admin/media', icon: Image, label: language === 'ar' ? 'الصور والمحتوى' : 'Media & Content' },
-    { path: '/admin/settings', icon: Settings, label: t('admin.settings') },
+{ path: '/admin/media', icon: Image, label: language === 'ar' ? 'الصور والبانرز' : 'Banners & Media' },    { path: '/admin/settings', icon: Settings, label: t('admin.settings') },
   ];
 
   const isActive = (path: string) => {

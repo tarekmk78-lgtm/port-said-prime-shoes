@@ -1,4 +1,3 @@
-import { CategorySelector } from '../../components/admin/CategorySelector';
 import { useEffect, useState } from 'react';
 import { useI18n } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
@@ -6,34 +5,13 @@ import { Banner } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { ImageUploader } from '../../components/admin/ImageUploader';
 import { Input } from '../../components/ui/Input';
-import { Textarea } from '../../components/ui/Textarea';
 import toast from 'react-hot-toast';
-import {
-  Image as ImageIcon,
-  Save,
-  Monitor,
-  Upload,
-  Link as LinkIcon, // ✅ تم التعديل هنا لاستخدام الأيقونة بدلاً من مكون Link
-} from 'lucide-react';
+import { Image as ImageIcon, Upload } from 'lucide-react';
 
 export function AdminCMS() {
   const { language } = useI18n();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
-  
-  // ✅ تمت إضافة الخصائص الناقصة هنا
-  const [heroData, setHeroData] = useState({
-    hero_title: '',
-    hero_title_ar: '',
-    hero_subtitle: '',
-    hero_subtitle_ar: '',
-    hero_video_url: '',
-    hero_image_url: '',
-    hero_link_type: 'shop',
-    hero_filter: '',
-    hero_custom_url: '',
-  });
 
   useEffect(() => {
     fetchData();
@@ -41,90 +19,22 @@ export function AdminCMS() {
 
   const fetchData = async () => {
     try {
-      const { data: settingsData } = await supabase
-        .from('settings')
-        .select('*')
-        .limit(1)
-        .single();
-
-      if (settingsData) {
-        setHeroData({
-          hero_title: settingsData.hero_title || '',
-          hero_title_ar: settingsData.hero_title_ar || '',
-          hero_subtitle: settingsData.hero_subtitle || '',
-          hero_subtitle_ar: settingsData.hero_subtitle_ar || '',
-          hero_video_url: settingsData.hero_video_url || '',
-          hero_image_url: settingsData.hero_image_url || '',
-          hero_link_type: settingsData.hero_link_type || 'shop', // ✅
-          hero_filter: settingsData.hero_filter || '',           // ✅
-          hero_custom_url: settingsData.hero_custom_url || '',   // ✅
-        });
-      }
-
-      const { data: bannersData } = await supabase
+      const { data: bannersData, error } = await supabase
         .from('banners')
         .select('*')
         .order('sort_order', { ascending: true });
+        
+      if (error) throw error;
       setBanners(bannersData || []);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching banners:', error);
+      toast.error(language === 'ar' ? 'فشل في تحميل البانرز' : 'Failed to load banners');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveHero = async () => {
-    setSaving(true);
-    try {
-      const { data: existingSettings, error: fetchError } = await supabase
-        .from('settings')
-        .select('id')
-        .limit(1)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const updateData = {
-        hero_title: heroData.hero_title,
-        hero_title_ar: heroData.hero_title_ar,
-        hero_subtitle: heroData.hero_subtitle,
-        hero_subtitle_ar: heroData.hero_subtitle_ar,
-        hero_video_url: heroData.hero_video_url,
-        hero_image_url: heroData.hero_image_url,
-        hero_link_type: heroData.hero_link_type || 'shop',
-        hero_filter: heroData.hero_filter || '',
-        hero_custom_url: heroData.hero_custom_url || '',
-        updated_at: new Date().toISOString(),
-      };
-
-      if (existingSettings?.id) {
-        const { error } = await supabase
-          .from('settings')
-          .update(updateData)
-          .eq('id', existingSettings.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('settings')
-          .insert([{ ...updateData, created_at: new Date().toISOString() }]);
-        if (error) throw error;
-      }
-
-      toast.success(language === 'ar' ? 'تم الحفظ بنجاح' : 'Settings saved successfully');
-      await fetchData();
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error(language === 'ar' ? 'حدث خطأ' : 'An error occurred');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleBannerUpdate = async (
-    bannerId: string,
-    field: string,
-    value: string | boolean
-  ) => {
+  const handleBannerUpdate = async (bannerId: string, field: string, value: string | boolean) => {
     try {
       const { error } = await supabase
         .from('banners')
@@ -132,10 +42,9 @@ export function AdminCMS() {
         .eq('id', bannerId);
 
       if (error) throw error;
-      toast.success(language === 'ar' ? 'تم التحديث' : 'Updated');
-      fetchData();
+      // ملاحظة: يمكن إزالة toast هنا لتجنب الإزعاج عند كل حرف، أو تركه كما هو
     } catch (error) {
-      toast.error(language === 'ar' ? 'حدث خطأ' : 'Error');
+      toast.error(language === 'ar' ? 'حدث خطأ في التحديث' : 'Update error');
     }
   };
 
@@ -153,7 +62,7 @@ export function AdminCMS() {
       });
 
       if (error) throw error;
-      toast.success(language === 'ar' ? 'تمت الإضافة' : 'Added');
+      toast.success(language === 'ar' ? 'تمت إضافة البانر' : 'Banner added');
       fetchData();
     } catch (error) {
       toast.error(language === 'ar' ? 'حدث خطأ' : 'Error');
@@ -161,10 +70,11 @@ export function AdminCMS() {
   };
 
   const handleDeleteBanner = async (bannerId: string) => {
-    if (!confirm(language === 'ar' ? 'هل أنت متأكد؟' : 'Sure?')) return;
+    if (!confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذا البانر؟' : 'Are you sure you want to delete this banner?')) return;
     try {
-      await supabase.from('banners').delete().eq('id', bannerId);
-      toast.success(language === 'ar' ? 'تم الحذف' : 'Deleted');
+      const { error } = await supabase.from('banners').delete().eq('id', bannerId);
+      if (error) throw error;
+      toast.success(language === 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully');
       fetchData();
     } catch (error) {
       toast.error(language === 'ar' ? 'حدث خطأ' : 'Error');
@@ -180,225 +90,101 @@ export function AdminCMS() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {language === 'ar' ? 'إدارة المحتوى' : 'Content Management'}
-        </h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {language === 'ar' ? 'إدارة البانرز والميديا' : 'Banners & Media Management'}
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm">
+            {language === 'ar' 
+              ? 'إدارة البانرات الإعلانية (ملاحظة: إدارة هيرو الصفحة الرئيسية تتم من صفحة "عروض Hero")' 
+              : 'Manage promotional banners (Note: Main Hero is managed in "Hero Slides" page)'}
+          </p>
+        </div>
+        <Button onClick={handleAddBanner}>
+          <Upload className="h-4 w-4 mr-2" />
+          {language === 'ar' ? 'إضافة بانر جديد' : 'Add New Banner'}
+        </Button>
       </div>
 
-      {/* Hero Section */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <div className="flex items-center gap-2 p-6 border-b border-gray-100">
-          <Monitor className="h-5 w-5 text-[#B8956E]" />
-          <h2 className="text-lg font-semibold">Hero Section</h2>
-        </div>
-
+      {/* Banners List */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-6 space-y-6">
-          {/* العناوين */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Input
-              label={language === 'ar' ? 'العنوان الرئيسي (EN)' : 'Main Title (EN)'}
-              value={heroData.hero_title}
-              onChange={(e) => setHeroData({ ...heroData, hero_title: e.target.value })}
-            />
-            <Input
-              label={language === 'ar' ? 'العنوان الرئيسي (AR)' : 'Main Title (AR)'}
-              value={heroData.hero_title_ar}
-              onChange={(e) => setHeroData({ ...heroData, hero_title_ar: e.target.value })}
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <Textarea
-              label={language === 'ar' ? 'الوصف (EN)' : 'Subtitle (EN)'}
-              value={heroData.hero_subtitle}
-              onChange={(e) => setHeroData({ ...heroData, hero_subtitle: e.target.value })}
-              rows={3}
-            />
-            <Textarea
-              label={language === 'ar' ? 'الوصف (AR)' : 'Subtitle (AR)'}
-              value={heroData.hero_subtitle_ar}
-              onChange={(e) => setHeroData({ ...heroData, hero_subtitle_ar: e.target.value })}
-              rows={3}
-            />
-          </div>
-
-          {/* ✅ إعدادات الروابط */}
-          <div className="border-t pt-6 space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <LinkIcon className="h-5 w-5 text-[#B8956E]" /> {/* ✅ تم التصحيح هنا */}
-              {language === 'ar' ? 'إعدادات الروابط' : 'Link Settings'}
-            </h3>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* نوع الرابط للزر الرئيسي */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  {language === 'ar' ? 'رابط زر "تسوق الآن"' : '"Shop Now" Button Link'}
-                </label>
-                <select
-                  value={heroData.hero_link_type || 'shop'}
-                  onChange={(e) => setHeroData({ ...heroData, hero_link_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-                >
-                  <option value="shop">{language === 'ar' ? 'المتجر (كل المنتجات)' : 'Shop (All Products)'}</option>
-                  <option value="category">{language === 'ar' ? 'فئة معينة' : 'Specific Category'}</option>
-                  <option value="offers">{language === 'ar' ? 'العروض والخصومات' : 'Offers & Sales'}</option>
-                  <option value="search">{language === 'ar' ? 'بحث عن منتجات' : 'Search Products'}</option>
-                  <option value="url">{language === 'ar' ? 'رابط مخصص' : 'Custom URL'}</option>
-                </select>
-              </div>
-
-              {/* الفلتر أو البحث */}
-              {(heroData.hero_link_type === 'search' || heroData.hero_link_type === 'shop') && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    {heroData.hero_link_type === 'search' 
-                      ? (language === 'ar' ? 'كلمة البحث' : 'Search Term')
-                      : (language === 'ar' ? 'فلتر المنتجات' : 'Product Filter')}
-                  </label>
+          {banners.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <ImageIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>{language === 'ar' ? 'لا توجد بانرات حالياً' : 'No banners yet'}</p>
+            </div>
+          ) : (
+            banners.map((banner) => (
+              <div key={banner.id} className="border border-gray-200 rounded-lg p-5 space-y-4 hover:shadow-md transition-shadow">
+                <div className="grid md:grid-cols-2 gap-4">
                   <Input
-                    value={heroData.hero_filter || ''}
-                    onChange={(e) => setHeroData({ ...heroData, hero_filter: e.target.value })}
-                    placeholder={language === 'ar' ? 'مثال: صيف 2026' : 'Example: Summer 2026'}
+                    label={language === 'ar' ? 'العنوان (English)' : 'Title (EN)'}
+                    value={banner.title || ''}
+                    onChange={(e) => handleBannerUpdate(banner.id, 'title', e.target.value)}
+                    placeholder="Banner Title"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {language === 'ar' 
-                      ? 'سيتم البحث عن المنتجات التي تحتوي على هذا النص'
-                      : 'Products containing this text will be shown'}
-                  </p>
-                </div>
-              )}
-
-              {/* اختيار الفئة */}
-              {heroData.hero_link_type === 'category' && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    {language === 'ar' ? 'اختر الفئة' : 'Select Category'}
-                  </label>
-                  <CategorySelector
-                    value={heroData.hero_filter}
-                   onChange={(id) => setHeroData({ ...heroData, hero_filter: id || '' })}
-                  />
-                </div>
-              )}
-
-              {/* الرابط المخصص */}
-              {heroData.hero_link_type === 'url' && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    {language === 'ar' ? 'الرابط' : 'URL'}
-                  </label>
                   <Input
-                    value={heroData.hero_custom_url || ''}
-                    onChange={(e) => setHeroData({ ...heroData, hero_custom_url: e.target.value })}
-                    placeholder="https://..."
+                    label={language === 'ar' ? 'العنوان (عربي)' : 'Title (AR)'}
+                    value={banner.title_ar || ''}
+                    onChange={(e) => handleBannerUpdate(banner.id, 'title_ar', e.target.value)}
+                    placeholder="عنوان البانر"
                   />
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* الفيديو والصورة */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">Video URL</label>
-              <input
-                type="text"
-                value={heroData.hero_video_url}
-                onChange={(e) => setHeroData({ ...heroData, hero_video_url: e.target.value })}
-                placeholder="https://youtube.com/..."
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-              />
-            </div>
-
-            <ImageUploader
-              bucket="site-media"
-              label={language === 'ar' ? 'صورة الخلفية' : 'Background Image'}
-              multiple={false}
-              value={heroData.hero_image_url ? [heroData.hero_image_url] : []}
-              onChange={(urls) => setHeroData({ ...heroData, hero_image_url: urls[0] || '' })}
-            />
-          </div>
-
-          <Button onClick={handleSaveHero} isLoading={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {language === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Banners */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5 text-[#B8956E]" />
-            <h2 className="text-lg font-semibold">Banners</h2>
-          </div>
-          <Button onClick={handleAddBanner}>
-            <Upload className="h-4 w-4 mr-2" />
-            {language === 'ar' ? 'إضافة بانر' : 'Add Banner'}
-          </Button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          {banners.map((banner) => (
-            <div key={banner.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  value={banner.title || ''}
-                  onChange={(e) => handleBannerUpdate(banner.id, 'title', e.target.value)}
-                  placeholder="Title (EN)"
-                />
-                <Input
-                  value={banner.title_ar || ''}
-                  onChange={(e) => handleBannerUpdate(banner.id, 'title_ar', e.target.value)}
-                  placeholder="العنوان (AR)"
-                />
-              </div>
-
-              <ImageUploader
-                bucket="site-media"
-                multiple={false}
-                value={banner.image_url ? [banner.image_url] : []}
-                onChange={(urls) => handleBannerUpdate(banner.id, 'image_url', urls[0] || '')}
-              />
-
-              <div className="flex gap-4 items-center flex-wrap">
-                <select
-                  value={banner.position || 'promo'}
-                  onChange={(e) => handleBannerUpdate(banner.id, 'position', e.target.value)}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
-                >
-                  <option value="hero">Hero</option>
-                  <option value="promo">Promo</option>
-                  <option value="category">Category</option>
-                </select>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={banner.is_active ?? true}
-                    onChange={(e) => handleBannerUpdate(banner.id, 'is_active', e.target.checked)}
-                    className="rounded border-gray-300 text-[#B8956E] focus:ring-[#B8956E]"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {language === 'ar' ? 'صورة البانر' : 'Banner Image'}
+                  </label>
+                  <ImageUploader
+                    bucket="site-media"
+                    multiple={false}
+                    value={banner.image_url ? [banner.image_url] : []}
+                    onChange={(urls) => handleBannerUpdate(banner.id, 'image_url', urls[0] || '')}
                   />
-                  <span className="text-sm">Active</span>
-                </label>
+                </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteBanner(banner.id)}
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700 ml-auto"
-                >
-                  Delete
-                </Button>
+                <div className="flex flex-wrap gap-4 items-center pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      {language === 'ar' ? 'الموقع:' : 'Position:'}
+                    </label>
+                    <select
+                      value={banner.position || 'promo'}
+                      onChange={(e) => handleBannerUpdate(banner.id, 'position', e.target.value)}
+                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B8956E]"
+                    >
+                      <option value="promo">Promo (منتصف الصفحة)</option>
+                      <option value="category">Category (صفحة الأقسام)</option>
+                      <option value="footer">Footer (أسفل الموقع)</option>
+                    </select>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={banner.is_active ?? true}
+                      onChange={(e) => handleBannerUpdate(banner.id, 'is_active', e.target.checked)}
+                      className="rounded border-gray-300 text-[#B8956E] focus:ring-[#B8956E]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      {language === 'ar' ? 'مفعل' : 'Active'}
+                    </span>
+                  </label>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteBanner(banner.id)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700 mr-auto"
+                  >
+                    {language === 'ar' ? 'حذف' : 'Delete'}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
-          {banners.length === 0 && (
-            <p className="text-center text-gray-500 py-8">No banners yet</p>
+            ))
           )}
         </div>
       </div>
