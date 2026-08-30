@@ -50,6 +50,7 @@ export function HeroSection() {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
+      console.log('Hero slides loaded:', data);
       setSlides(data || []);
     } catch (error) {
       console.error('Error fetching slides:', error);
@@ -72,18 +73,18 @@ export function HeroSection() {
     return `https://player.vimeo.com/video/${videoId}?autoplay=1&muted=1&loop=1`;
   };
 
-  // ✅ الدالة الذكية لاختيار الصورة بناءً على اللغة
   const getMediaUrl = (slide: HeroSlide) => {
     if (language === 'ar' && slide.media_url_ar) return slide.media_url_ar;
     if (language === 'en' && slide.media_url_en) return slide.media_url_en;
     return slide.media_url;
   };
 
+  // ✅ حماية من الأخطاء
   if (loading) {
     return <div className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-gray-950" />;
   }
 
-  if (slides.length === 0) {
+  if (!slides || slides.length === 0) {
     return (
       <div className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
         <div className="text-center text-white px-4">
@@ -98,20 +99,27 @@ export function HeroSection() {
     );
   }
 
+  // ✅ التأكد من إن currentSlide ضمن النطاق
+  const safeCurrentSlide = Math.min(currentSlide, slides.length - 1);
+  const currentSlideData = slides[safeCurrentSlide];
+  
+  // ✅ حماية من القيم undefined
+  if (!currentSlideData) {
+    return <div className="h-[280px] bg-gray-900" />;
+  }
+
   const isAr = language === 'ar';
 
   return (
     <section className="relative h-[280px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-black overflow-hidden select-none">
-      {/* Slides */}
       <div className="absolute inset-0 w-full h-full">
         {slides.map((slide, index) => (
           <div
             key={slide.id}
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide ? 'opacity-100 z-0' : 'opacity-0 z-0'
+              index === safeCurrentSlide ? 'opacity-100 z-0' : 'opacity-0 z-0'
             }`}
           >
-            {/* Media */}
             {slide.media_type === 'image' ? (
               <img
                 src={getMediaUrl(slide)}
@@ -140,7 +148,6 @@ export function HeroSection() {
               </div>
             )}
             
-            {/* ✅ Gradient ذكي حسب اللغة */}
             <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/50 md:bg-gradient-to-b md:from-black/20 ${
               isAr 
                 ? 'md:bg-gradient-to-l md:from-black/85 md:via-black/40 md:to-transparent' 
@@ -150,7 +157,6 @@ export function HeroSection() {
         ))}
       </div>
 
-      {/* ✅ شريط علوي - شحن مجاني */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-black/30 backdrop-blur-[2px] py-2 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex items-center justify-center gap-4 text-white/90 text-[10px] md:text-xs tracking-wider">
@@ -161,25 +167,24 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="relative h-full max-w-7xl mx-auto px-4 md:px-12 flex items-center pt-8 z-10">
         <div className={`w-full md:w-1/2 ${isAr ? 'text-right' : 'text-left'}`}>
           <p className="text-amber-500 text-[11px] md:text-sm font-bold uppercase mb-1 md:mb-2 tracking-widest">
-            {isAr ? slides[currentSlide].subtitle_ar : slides[currentSlide].subtitle_en}
+            {currentSlideData.subtitle_ar || currentSlideData.subtitle_en}
           </p>
 
           <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-2 md:mb-3 leading-tight drop-shadow-md">
-            {isAr ? slides[currentSlide].title_ar : slides[currentSlide].title_en}
+            {isAr ? currentSlideData.title_ar : currentSlideData.title_en}
           </h1>
 
           <div className="flex flex-wrap gap-2 md:gap-3 mt-4 md:mt-6">
-            {slides[currentSlide].button_link && (
+            {currentSlideData.button_link && (
               <Link
-                to={slides[currentSlide].button_link}
+                to={currentSlideData.button_link}
                 className="inline-flex items-center gap-1.5 px-4 py-2 md:px-6 md:py-3 bg-amber-600 text-white text-xs md:text-sm rounded-md font-bold hover:bg-amber-700 transition-all shadow-lg active:scale-95"
               >
                 <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                {isAr ? slides[currentSlide].button_text_ar : slides[currentSlide].button_text_en}
+                {isAr ? currentSlideData.button_text_ar : currentSlideData.button_text_en}
               </Link>
             )}
             <Link
@@ -192,7 +197,6 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Navigation Arrows */}
       {slides.length > 1 && (
         <>
           <button
@@ -208,20 +212,18 @@ export function HeroSection() {
             <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
           </button>
 
-          {/* Dots Indicator */}
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2">
             {slides.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === currentSlide ? 'bg-amber-500 w-6' : 'bg-white/30 hover:bg-white/50 w-1.5'
+                  index === safeCurrentSlide ? 'bg-amber-500 w-6' : 'bg-white/30 hover:bg-white/50 w-1.5'
                 }`}
               />
             ))}
           </div>
 
-          {/* Play/Pause Button */}
           <button
             onClick={togglePlay}
             className="md:hidden absolute bottom-3 right-3 sm:right-4 z-20 p-2 bg-black/10 hover:bg-black/40 border border-white/10 rounded-full text-white/60 hover:text-white transition-all"
