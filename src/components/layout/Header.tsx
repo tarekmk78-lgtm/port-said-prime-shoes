@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth-context';
 import { useCart } from '../../lib/cart-context';
-import { supabase } from '../../lib/supabase'; // ✅ تمت الإضافة
+import { useSettings } from '../../lib/settings-context'; // ✅ تمت الإضافة
+import { supabase } from '../../lib/supabase';
 import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, Phone, Sparkles } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -30,7 +31,8 @@ export function Header() {
   const { t, language, setLanguage, isRTL } = useI18n();
   const { user, signOut, isAdmin } = useAuth();
   const { itemCount } = useCart();
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const { settings } = useSettings(); // ✅ جلب الإعدادات من الـ Context
+  
   const navigate = useNavigate();
   
   const [isScrolled, setIsScrolled] = useState(false);
@@ -38,8 +40,6 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  
-  // ✅ حالة الماركات
   const [brands, setBrands] = useState<any[]>([]);
 
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -57,19 +57,7 @@ export function Header() {
     fetchBrands();
   }, []);
 
-  useEffect(() => {
-    async function fetchWhatsAppNumber() {
-      const { data } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'whatsapp_number')
-        .maybeSingle();
-
-      if (data?.value) setWhatsappNumber(String(data.value));
-    }
-
-    fetchWhatsAppNumber();
-  }, []);
+  // ✅ تم حذف useEffect القديم الخاص بـ whatsapp_number لأنه لم يعد ضرورياً
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -97,9 +85,15 @@ export function Header() {
   };
 
   const toggleLanguage = () => setLanguage(language === 'en' ? 'ar' : 'en');
-  const brandName = language === 'ar' ? 'PRIME' : 'PRIME';
-  const brandSubName = language === 'ar' ? 'بورسعيد برايم شوز' : 'Port Said Prime Shoes';
+  
+  // ✅ جعل اسم المتجر ديناميكياً بناءً على الإعدادات
+  const brandName = settings?.site_name || 'PRIME';
+  const brandSubName = language === 'ar' 
+    ? (settings?.site_name_ar || 'بورسعيد برايم شوز') 
+    : (settings?.site_name || 'Port Said Prime Shoes');
 
+  // ✅ استخدام رقم الواتساب من الإعدادات مباشرة
+  const whatsappNumber = settings?.whatsapp_number || '';
   const displayPhone = whatsappNumber ? whatsappNumber.replace(/\s/g, '') : '';
   const phoneHref = formatPhone(displayPhone);
 
@@ -113,10 +107,12 @@ export function Header() {
             {language === 'ar' ? 'أحذية عالمية مستوردة بأعلى جودة' : 'Premium Imported Global Footwear'}
           </p>
           <div className="flex items-center gap-5">
-            <a href={`tel:${phoneHref}`} className="flex items-center gap-1.5 hover:text-amber-500 transition-colors">
-              <Phone className="h-3.5 w-3.5" />
-              {displayPhone}
-            </a>
+            {displayPhone && (
+              <a href={`tel:${phoneHref}`} className="flex items-center gap-1.5 hover:text-amber-500 transition-colors">
+                <Phone className="h-3.5 w-3.5" />
+                {displayPhone}
+              </a>
+            )}
             <button onClick={toggleLanguage} className="hover:text-amber-500 transition-colors font-medium uppercase tracking-wider border-l border-white/20 pl-5 rtl:border-r rtl:border-l-0 rtl:pl-0 rtl:pr-5">
               {language === 'en' ? 'العربية' : 'English'}
             </button>
@@ -267,8 +263,8 @@ export function Header() {
               <div className="flex flex-col h-full">
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">
                   <div className="flex flex-col">
-                    <span className="font-display text-xl font-black text-gray-900">PRIME</span>
-                    <span className="text-[9px] uppercase tracking-widest text-gray-500">Port Said Shoes</span>
+                    <span className="font-display text-xl font-black text-gray-900">{brandName}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-gray-500">{brandSubName}</span>
                   </div>
                   <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label={language === 'ar' ? 'إغلاق القائمة' : 'Close menu'}>
                     <X className="h-6 w-6 text-gray-600" />
