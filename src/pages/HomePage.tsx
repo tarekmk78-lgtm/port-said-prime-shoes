@@ -11,7 +11,7 @@ export function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [brands, setBrands] = useState<any[]>([]); // ✅ تمت الإضافة
+  const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,15 +30,14 @@ export function HomePage() {
           .eq('is_active', true)
           .order('sort_order', { ascending: true });
 
-       const { data: newArrivalsData } = await supabase
-  .from('products')
-  .select('*')
-  .eq('is_active', true)
-  .eq('is_new', true) // ✅ جلب المنتجات الجديدة فقط
-  .order('created_at', { ascending: false })
-  .limit(10);
+        const { data: newArrivalsData } = await supabase
+          .from('products')
+          .select('*')
+          .eq('is_active', true)
+          .eq('is_new', true) // ✅ جلب المنتجات الجديدة فقط
+          .order('created_at', { ascending: false })
+          .limit(10);
 
-        // ✅ جلب الماركات من قاعدة البيانات
         const { data: brandsData } = await supabase
           .from('brands')
           .select('*')
@@ -48,7 +47,7 @@ export function HomePage() {
         setCategories(categoriesData || []);
         setBanners(bannersData || []);
         setNewArrivals(newArrivalsData || []);
-        setBrands(brandsData || []); // ✅ حفظ الماركات
+        setBrands(brandsData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -207,7 +206,6 @@ export function HomePage() {
                 const productName = language === 'ar' ? product.name_ar : product.name;
                 const productPrice = product.price || 0;
                 
-                // ✅ تصحيح أخطاء TypeScript هنا
                 const oldPrice = product.compare_at_price || null;
                 const hasDiscount = oldPrice && oldPrice > productPrice;
                 const discountPercent = hasDiscount ? Math.round(((oldPrice - productPrice) / oldPrice) * 100) : null;
@@ -265,7 +263,6 @@ export function HomePage() {
                           </span>
                         )}
                       </div>
-                      {/* ✅ تصحيح review_count إلى reviews_count */}
                       {product.rating && (
                         <div className="flex items-center gap-1 mt-1">
                           <span className="text-xs text-amber-500">★</span>
@@ -297,7 +294,58 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 5. تسوق حسب الماركة (ديناميكي من قاعدة البيانات) ✅ */}
+      {/* ✅ 5. Banners Section (تم نقله هنا ليكون قبل الماركات) */}
+      {banners.length > 0 && (
+        <section className="py-12 md:py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 md:px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {banners.map((banner) => {
+                const bannerTitle = language === 'ar' ? banner.title_ar : banner.title;
+                const bannerSubtitle = language === 'ar' ? (banner.subtitle_ar || '') : (banner.subtitle || '');
+                const buttonText = language === 'ar' ? (banner.button_text_ar || 'اكتشف المزيد') : (banner.button_text || 'Discover More');
+
+                return (
+                  <Link
+                    key={banner.id}
+                    to={banner.link_url || '/shop'}
+                    className="relative overflow-hidden rounded-2xl shadow-sm group h-72 md:h-80"
+                  >
+                    <img
+                      src={banner.image_url}
+                      alt={bannerTitle}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                    
+                    <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
+                      {banner.position === 'sale' && (
+                        <span className="absolute top-4 right-4 px-3 py-1 bg-amber-500 text-black text-xs font-bold rounded-full uppercase tracking-wider">
+                          {language === 'ar' ? 'عرض خاص' : 'Special Offer'}
+                        </span>
+                      )}
+                      <h3 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
+                        {bannerTitle}
+                      </h3>
+                      {bannerSubtitle && (
+                        <p className="text-white/80 text-sm mb-4 line-clamp-2">
+                          {bannerSubtitle}
+                        </p>
+                      )}
+                      <span className="inline-flex items-center gap-2 text-white font-semibold text-sm border-b border-white/50 pb-1 w-fit group-hover:border-amber-500 group-hover:text-amber-500 transition-colors">
+                        {buttonText}
+                        <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ✅ 6. تسوق حسب الماركة (تم نقله هنا ليكون بعد البنرات مباشرة) */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-8 md:mb-12">
@@ -366,57 +414,6 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* 6. Banners Section */}
-      {banners.length > 0 && (
-        <section className="py-12 md:py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 md:px-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {banners.map((banner) => {
-                const bannerTitle = language === 'ar' ? banner.title_ar : banner.title;
-                const bannerSubtitle = language === 'ar' ? (banner.subtitle_ar || '') : (banner.subtitle || '');
-                const buttonText = language === 'ar' ? (banner.button_text_ar || 'اكتشف المزيد') : (banner.button_text || 'Discover More');
-
-                return (
-                  <Link
-                    key={banner.id}
-                    to={banner.link_url || '/shop'}
-                    className="relative overflow-hidden rounded-2xl shadow-sm group h-72 md:h-80"
-                  >
-                    <img
-                      src={banner.image_url}
-                      alt={bannerTitle}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                    
-                    <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
-                      {banner.position === 'sale' && (
-                        <span className="absolute top-4 right-4 px-3 py-1 bg-amber-500 text-black text-xs font-bold rounded-full uppercase tracking-wider">
-                          {language === 'ar' ? 'عرض خاص' : 'Special Offer'}
-                        </span>
-                      )}
-                      <h3 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
-                        {bannerTitle}
-                      </h3>
-                      {bannerSubtitle && (
-                        <p className="text-white/80 text-sm mb-4 line-clamp-2">
-                          {bannerSubtitle}
-                        </p>
-                      )}
-                      <span className="inline-flex items-center gap-2 text-white font-semibold text-sm border-b border-white/50 pb-1 w-fit group-hover:border-amber-500 group-hover:text-amber-500 transition-colors">
-                        {buttonText}
-                        <ArrowRight className="w-4 h-4 rtl:rotate-180" />
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* 7. Why Choose Us */}
       <section className="py-16 md:py-24 bg-white border-t border-gray-100">
