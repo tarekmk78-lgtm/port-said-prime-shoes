@@ -3,19 +3,55 @@ import { supabase } from './supabase';
 
 interface SiteSettings {
   id?: string;
-  store_name?: string;
-  store_name_ar?: string;
-  store_description?: string;
-  store_description_ar?: string;
-  contact_email?: string;
-  contact_phone?: string;
-  address?: string;
+  site_name?: string;
+  site_name_ar?: string;
+  tagline?: string;
+  tagline_ar?: string;
   logo_url?: string;
   favicon_url?: string;
-  currency?: string;
-  language?: string;
-  tax_rate?: number;
+  contact_email?: string;
+  contact_phone?: string;
+  whatsapp_number?: string;
+  contact_address?: string;
+  contact_address_en?: string;
+  social_facebook?: string;
+  social_instagram?: string;
+  social_twitter?: string;
+  social_youtube?: string;
+  social_tiktok?: string;
+  meta_title?: string;
+  meta_title_ar?: string;
+  meta_description?: string;
+  meta_description_ar?: string;
+  meta_keywords?: string;
   shipping_cost?: number;
+  free_shipping_threshold?: number;
+  tax_rate?: number;
+  currency?: string;
+  currency_symbol?: string;
+  about_title_ar?: string;
+  about_title_en?: string;
+  about_subtitle_ar?: string;
+  about_subtitle_en?: string;
+  about_description_ar?: string;
+  about_description_en?: string;
+  about_image_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  accent_color?: string;
+  background_color?: string;
+  font_family?: string;
+  layout_style?: string;
+  hero_layout?: string;
+  grid_columns?: number;
+  template_id?: string;
+  enable_animations?: boolean;
+  animation_speed?: string;
+  banner_title_ar?: string;
+  banner_title_en?: string;
+  banner_link?: string;
+  banner_image_url?: string;
+  banner_is_active?: boolean;
   [key: string]: any;
 }
 
@@ -39,12 +75,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const fetchSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('site_settings')
+        .from('settings')  // ✅ تم التعديل من site_settings إلى settings
         .select('*')
+        .limit(1)
         .single();
 
-      if (error) throw error;
-      setSettings(data || {});
+      if (error) {
+        console.error('Error fetching settings:', error);
+        return;
+      }
+      
+      if (data) {
+        setSettings(data);
+      }
     } catch (error) {
       console.error('Error fetching settings:', error);
     } finally {
@@ -54,13 +97,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = async (newSettings: Partial<SiteSettings>) => {
     try {
-      const { error } = await supabase
-        .from('site_settings')
-        .update(newSettings)
-        .eq('id', settings.id);
+      if (settings.id) {
+        const { error } = await supabase
+          .from('settings')  // ✅ تم التعديل
+          .update({ ...newSettings, updated_at: new Date().toISOString() })
+          .eq('id', settings.id);
 
-      if (error) throw error;
-      setSettings({ ...settings, ...newSettings });
+        if (error) throw error;
+        setSettings({ ...settings, ...newSettings });
+      } else {
+        const { data, error } = await supabase
+          .from('settings')  // ✅ تم التعديل
+          .insert([{ ...newSettings, created_at: new Date().toISOString() }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setSettings(data);
+        }
+      }
     } catch (error) {
       console.error('Error updating settings:', error);
       throw error;
