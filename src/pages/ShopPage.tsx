@@ -91,7 +91,8 @@ export function ShopPage() {
         } else if (filterType === 'featured') {
           query = query.eq('is_featured', true);
         } else if (filterType === 'sale') {
-          query = query.not('compare_at_price', 'is', null).gt('compare_at_price', 0);
+          // ✅ تم تعديل شرط الخصم ليكون أكثر دقة وثبات
+          query = query.neq('compare_at_price', null).gt('compare_at_price', 0);
         } else if (filterType) {
           query = query.or(`name.ilike.%${filterType}%,name_ar.ilike.%${filterType}%,description.ilike.%${filterType}%,description_ar.ilike.%${filterType}%`);
         }
