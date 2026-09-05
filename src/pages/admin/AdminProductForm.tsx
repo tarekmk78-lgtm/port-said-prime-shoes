@@ -23,12 +23,12 @@ const emptyForm = {
   compare_at_price: '',
   cost_price: '',
   category_id: '',
-  brand: '',
+  brand: '', // ✅ هيبقى هنا الـ slug
   images: [] as string[],
   tags: '',
   stock_quantity: '0',
   is_featured: false,
-  is_new: false, // ✅ تأكدنا إنها موجودة وقيمتها الافتراضية false
+  is_new: false,
   is_bestseller: false,
   is_active: true,
 };
@@ -51,18 +51,30 @@ export function AdminProductForm() {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<any[]>([]); // ✅ إضافة حالة للماركات
   const [form, setForm] = useState(emptyForm);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const Arrow = isRTL ? ArrowRight : ArrowLeft;
 
   useEffect(() => {
     fetchCategories();
+    fetchBrands(); // ✅ جلب الماركات عند فتح الصفحة
     if (isEditing) fetchProduct();
   }, [id]);
 
   async function fetchCategories() {
     const { data } = await supabase.from('categories').select('*').order('name');
     setCategories(data || []);
+  }
+
+  // ✅ دالة جديدة لجلب الماركات النشطة
+  async function fetchBrands() {
+    const { data } = await supabase
+      .from('brands')
+      .select('slug, name_ar, name_en')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    setBrands(data || []);
   }
 
   async function fetchProduct() {
@@ -81,12 +93,12 @@ export function AdminProductForm() {
           compare_at_price: product.compare_at_price ? String(product.compare_at_price) : '',
           cost_price: product.cost_price ? String(product.cost_price) : '',
           category_id: product.category_id || '',
-          brand: product.brand || '',
+          brand: product.brand || '', // ✅ تخزين الـ slug كما هو
           images: product.images || [],
           tags: (product.tags || []).join(', '),
           stock_quantity: String(product.stock_quantity),
           is_featured: product.is_featured,
-          is_new: product.is_new, // ✅ ربط القيمة القادمة من الداتابيز
+          is_new: product.is_new,
           is_bestseller: product.is_bestseller,
           is_active: product.is_active,
         });
@@ -100,7 +112,7 @@ export function AdminProductForm() {
           color: v.color || '',
           color_code: v.color_code || '',
           stock_quantity: String(v.stock_quantity),
-          sku: v.sku || '', // ✅ تم إضافة || '' هنا لحل المشكلة
+          sku: v.sku || '',
         }))
       );
     } catch (error) {
@@ -142,12 +154,12 @@ export function AdminProductForm() {
         compare_at_price: form.compare_at_price ? parseFloat(form.compare_at_price) : null,
         cost_price: form.cost_price ? parseFloat(form.cost_price) : null,
         category_id: form.category_id || null,
-        brand: form.brand || null,
+        brand: form.brand || null, // ✅ إرسال الـ slug مباشرة
         images: form.images,
         tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         stock_quantity: parseInt(form.stock_quantity) || 0,
         is_featured: form.is_featured,
-        is_new: form.is_new, // ✅ التأكد من إرسال القيمة المحدثة
+        is_new: form.is_new,
         is_bestseller: form.is_bestseller,
         is_active: form.is_active,
       };
@@ -242,8 +254,21 @@ export function AdminProductForm() {
             ...categories.map((c) => ({ value: c.id, label: language === 'ar' ? c.name_ar : c.name })),
           ]}
         />
+        
+        {/* ✅ تم تعديل حقل الماركة ليكون قائمة منسدلة تختار منها الـ slug مباشرة */}
         <div className="grid md:grid-cols-2 gap-4">
-          <Input label={language === 'ar' ? 'العلامة التجارية' : 'Brand'} value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+          <Select
+            label={language === 'ar' ? 'العلامة التجارية' : 'Brand'}
+            value={form.brand}
+            onChange={(e) => setForm({ ...form, brand: e.target.value })}
+            options={[
+              { value: '', label: language === 'ar' ? 'اختر ماركة' : 'Select Brand' },
+              ...brands.map((b) => ({ 
+                value: b.slug, 
+                label: language === 'ar' ? b.name_ar : b.name_en 
+              })),
+            ]}
+          />
           <Input label={language === 'ar' ? 'الوسوم (مفصولة بفاصلة)' : 'Tags (comma separated)'} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
         </div>
       </div>
@@ -265,7 +290,7 @@ export function AdminProductForm() {
         <ImageUploader bucket="product-images" multiple value={form.images} onChange={(urls) => setForm({ ...form, images: urls })} />
       </div>
 
-      {/* Flags - تم تعديل هذا القسم ليكون أكثر احترافية */}
+      {/* Flags */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">{language === 'ar' ? 'الحالة والعلامات' : 'Status & Flags'}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
