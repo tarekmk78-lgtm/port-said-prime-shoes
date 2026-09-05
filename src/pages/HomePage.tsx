@@ -296,6 +296,7 @@ export function HomePage() {
       </section>
 
       {/* ✅ 5. Banners Section (تم نقله هنا ليكون قبل الماركات) */}
+           {/* ✅ 5. Banners Section (تم تعديل الروابط لتكون ذكية حسب نوع البانر) */}
       {banners.length > 0 && (
         <section className="py-12 md:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -305,10 +306,20 @@ export function HomePage() {
                 const bannerSubtitle = language === 'ar' ? (banner.subtitle_ar || '') : (banner.subtitle || '');
                 const buttonText = language === 'ar' ? (banner.button_text_ar || 'اكتشف المزيد') : (banner.button_text || 'Discover More');
 
+                // ✅ تحديد الرابط الذكي بناءً على نوع البانر أو عنوانه
+                let bannerLink = '/shop'; // الرابط الافتراضي
+                if (banner.link_url) {
+                  bannerLink = banner.link_url;
+                } else if (banner.position === 'sale' || banner.title_ar?.includes('خصم') || banner.title?.toLowerCase().includes('sale')) {
+                  bannerLink = '/shop?filter=sale'; // توجيه لصفحة العروض
+                } else if (banner.position === 'new' || banner.title_ar?.includes('جديد') || banner.title?.toLowerCase().includes('new')) {
+                  bannerLink = '/shop?filter=new'; // توجيه لصفحة وصل حديثاً
+                }
+
                 return (
                   <Link
                     key={banner.id}
-                    to={banner.link_url || '/shop'}
+                    to={bannerLink} // ✅ استخدام الرابط الذكي هنا
                     className="relative overflow-hidden rounded-2xl shadow-sm group h-72 md:h-80"
                   >
                     <img
