@@ -282,9 +282,10 @@ export function HomePage() {
             </div>
           )}
 
+          {/* ✅ تم تعديل الرابط هنا ليوجه إلى المنتجات الجديدة فقط */}
           <div className="text-center mt-8 md:mt-12">
             <Link
-              to="/shop"
+              to="/shop?filter=new"
               className="inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-black text-white rounded-full font-semibold hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl text-sm md:text-base"
             >
               {language === 'ar' ? 'عرض الكل' : 'View All'}
