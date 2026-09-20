@@ -1,6 +1,13 @@
 import { MessageCircle } from 'lucide-react';
 import { useI18n } from '../../lib/i18n';
 
+// ✅ تعريف نوع window.fbq عشان TypeScript ميطلعش أخطاء
+declare global {
+  interface Window {
+    fbq?: (action: string, eventName: string) => void;
+  }
+}
+
 /**
  * Site-wide floating WhatsApp button for general inquiries (not tied to a
  * specific product/cart). Pinned to the bottom-left of the screen — a fixed
@@ -18,11 +25,19 @@ export function WhatsAppButton() {
 
   const href = `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
 
+  // ✅ دالة التتبع عند الضغط
+  const handleWhatsAppClick = () => {
+    if (typeof window.fbq !== 'undefined') {
+      window.fbq('track', 'Contact');
+    }
+  };
+
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={handleWhatsAppClick} // ✅ إضافة حدث التتبع هنا
       aria-label={language === 'ar' ? 'تواصل معنا عبر واتساب' : 'Chat with us on WhatsApp'}
       className="fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg flex items-center justify-center transition-transform hover:scale-105"
     >
