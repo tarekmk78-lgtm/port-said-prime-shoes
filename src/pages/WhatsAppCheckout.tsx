@@ -8,6 +8,10 @@ import { Textarea } from '../components/ui/Textarea';
 import { MessageCircle, Package, MapPin, User, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+// ❌ شيلنا تعريف fbq من هنا عشان موجود بالفعل في WhatsAppButton.tsx
+// لو شلت التعريف من WhatsAppButton.tsx برضو، ممكن ترجعه هنا.
+// الأفضل نسيبه في ملف واحد بس (WhatsAppButton.tsx) عشان ميحصلش تعارض.
+
 export function WhatsAppCheckout() {
   const { language } = useI18n();
   const { settings } = useSettings();
@@ -22,10 +26,15 @@ export function WhatsAppCheckout() {
     customer_name: '',
     customer_phone: '',
     customer_address: '',
-    shoe_size: '',  // ✅ فاضي
-    shoe_color: '',  // ✅ فاضي
+    shoe_size: '',
+    shoe_color: '',
     notes: '',
   });
+
+  // ✅ نقلنا حساب السعر لفوق عشان نستخدمه في التتبع
+  const finalPrice = variant 
+    ? (variant.price || product?.price + (variant.price_adjustment || 0)) 
+    : product?.price;
 
   useEffect(() => {
     if (location.state?.product) {
@@ -33,11 +42,10 @@ export function WhatsAppCheckout() {
       const receivedVariant = location.state.variant;
       setVariant(receivedVariant);
       
-      // ✅ ملء البيانات تلقائياً من المتغير لو موجود، أو نسيبها فاضية
       setFormData(prev => ({
         ...prev,
-        shoe_size: receivedVariant?.size || '',  // فاضي لو مفيش variant
-        shoe_color: receivedVariant?.color || '',  // فاضي لو مفيش variant
+        shoe_size: receivedVariant?.size || '',
+        shoe_color: receivedVariant?.color || '',
       }));
     } else {
       toast.error(language === 'ar' ? 'المنتج غير موجود' : 'Product not found');
@@ -67,15 +75,23 @@ export function WhatsAppCheckout() {
       return;
     }
 
+    // ✅ إرسال حدث InitiateCheckout للفيسبوك
+    // استخدام any عشان نتجنب مشكلة التعريف المتكرر لـ fbq
+    if (typeof (window as any).fbq !== 'undefined') {
+      (window as any).fbq('track', 'InitiateCheckout', {
+        content_ids: [product.id],
+        content_type: 'product',
+        value: finalPrice,
+        currency: 'EGP'
+      });
+    }
+
     const rawPhone = settings?.whatsapp_number || '201007526286';
     const phoneNumber = rawPhone.replace(/[^0-9]/g, '');
 
-    const finalPrice = variant ? (variant.price || product.price + (variant.price_adjustment || 0)) : product.price;
     const productImage = product.images?.[0] || '';
 
-    // ✅ ترتيب الرسالة عشان المعاينة تظهر تلقائياً
-    // الرابط لازم يكون في آخر سطر منفصل تماماً
-    const message = `🛍️ *طلب جديد من الموقع*
+    const message = `️ *طلب جديد من الموقع*
 
 ━━━━━━━━━━━━━━━━━━
 👤 *بيانات العميل:*
@@ -97,7 +113,6 @@ ${formData.notes ? `\n━━━━━━━━━━━━━━━━━━\n *
 🖼️ *صورة المنتج:*
 ${productImage}`;
 
-    // ✅ استخدام api.whatsapp.com بدل wa.me (أحياناً أفضل للمعاينة)
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
     
     window.open(whatsappUrl, '_blank');
@@ -112,8 +127,6 @@ ${productImage}`;
       </div>
     );
   }
-
-  const finalPrice = variant ? (variant.price || product.price + (variant.price_adjustment || 0)) : product.price;
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] py-12">
@@ -185,7 +198,6 @@ ${productImage}`;
                   {language === 'ar' ? 'تفاصيل المنتج' : 'Product Details'}
                 </h2>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {/* المقاس - فاضي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {language === 'ar' ? 'المقاس' : 'Size'}
@@ -199,7 +211,6 @@ ${productImage}`;
                     />
                   </div>
                   
-                  {/* اللون - فاضي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {language === 'ar' ? 'اللون' : 'Color'}
@@ -239,7 +250,7 @@ ${productImage}`;
             </div>
           </div>
 
-          {/* ملخص الطلب - مع صورة المنتج */}
+          {/* ملخص الطلب */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
               <h2 className="text-lg font-semibold text-ink mb-4 flex items-center gap-2">
@@ -249,7 +260,6 @@ ${productImage}`;
               
               {product && (
                 <div className="space-y-4">
-                  {/* ✅ صورة المنتج فعلية */}
                   <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
                     <img
                       src={product.images?.[0] || 'https://placehold.co/300'}
